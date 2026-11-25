@@ -123,7 +123,8 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       <label class="f">Peso di calcolo (t)<input type="text" inputmode="decimal" id="lugW" step="0.1"></label>
       <label class="f">Gancio sopra golfari (m)<input type="text" inputmode="decimal" id="lugH" step="0.1"></label>
     </div>
-    <label class="f">Equidistanza dal baricentro<select id="lugMetric"><option value="axial">lungo l'asse del concio (golfari simmetrici, carichi uguali)</option><option value="radial">in pianta, dal baricentro (funi della stessa lunghezza)</option></select></label>
+    <label class="f">Equidistanza dal baricentro<select id="lugMetric"><option value="axial">lungo l'asse del concio (golfari simmetrici, carichi uguali)</option><option value="radial">in pianta, dal baricentro (stessa distanza in pianta)</option><option value="rope">funi della stessa lunghezza (un golfare fisso, gli altri si adattano)</option></select></label>
+      <label class="f" id="lugAnchorBox" hidden>Golfare fisso<select id="lugAnchor"><option value="0">G1</option><option value="1">G2</option><option value="2">G3</option><option value="3">G4</option></select></label>
     <div><div class="note">Travi su cui posare i golfari (piattabanda in asse all'anima):</div><div id="lugGirders" class="row"></div></div>
     <label class="row"><input type="radio" name="lugMode" value="auto" checked> Sugli assi di diaframmi/irrigidimenti <select id="lugAlt" class="grow" aria-label="Soluzione proposta"></select></label>
     <label class="row"><input type="radio" name="lugMode" value="man"> Distanza imposta dal baricentro <input type="text" inputmode="decimal" id="lugR" step="0.05" style="width:90px"> m</label>
@@ -166,7 +167,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=14"></script>
+<script src="draw.js?v=15"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -176,7 +177,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '14 (25/11/2026)';
+  const PB_VERSION = '15 (25/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store;
@@ -765,7 +766,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       const old = lugStale(c), sv0 = c.lugs || {};
       // concio cambiato: si tengono numero e criteri, ma travi e spostamenti manuali si ricalcolano
       const sv = old ? {n: sv0.n, metric: sv0.metric, H: sv0.H, fd: sv0.fd, lugL: sv0.lugL, lugWd: sv0.lugWd} : sv0;
-      $('#lugN').value = String(sv.n || (lm.girders.length > 1 ? 4 : 2)); $('#lugMetric').value = sv.metric || 'axial';
+      $('#lugN').value = String(sv.n || (lm.girders.length > 1 ? 4 : 2)); $('#lugMetric').value = sv.metric || 'axial'; $('#lugAnchor').value = String(sv.anchor || 0);
       $('#lugW').value = dec(c.Wcalc || c.W / 1000, 2); // peso della scheda (pesi del modello) salvo valore scritto a mano
       $('#lugH').value = sv.H ? dec(sv.H, 1) : '';
       document.querySelector(`input[name=lugMode][value=${sv.mode === 'manuale' ? 'man' : 'auto'}]`).checked = true;
@@ -791,7 +792,8 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const need = n / 2;
     if (gs.length !== need) { $('#lugSum').innerHTML = `<span class="warn">Per ${n} golfari scegli ${need === 1 ? 'una trave' : 'due travi'}.</span>`; $('#lugTab').innerHTML = ''; LUG.res = null; LUG.preview = null; drawIcons(); return; }
     const man = document.querySelector('input[name=lugMode]:checked').value === 'man';
-    const cfg = {n, girders: gs, alt: LUG.alt || 0, metric: $('#lugMetric').value, lugL: numv('#lugL') || 0.55, lugW: numv('#lugWd') || 0.15}; if (man) cfg.R = numv('#lugR') || 0;
+    const rope = $('#lugMetric').value === 'rope'; $('#lugAnchorBox').hidden = !rope;
+    const cfg = {n, girders: gs, alt: LUG.alt || 0, metric: rope ? 'radial' : $('#lugMetric').value, lugL: numv('#lugL') || 0.55, lugW: numv('#lugWd') || 0.15}; if (man) cfg.R = numv('#lugR') || 0;
     if (man && !(cfg.R > 0.5)) { $('#lugSum').innerHTML = '<span class="warn">Scrivi la distanza dal baricentro.</span>'; return; }
     const r = PBDraw.placeLugs(lm, cfg);
     if (r.error || !r.points.length) { $('#lugSum').innerHTML = '<span class="ko">' + esc(r.error || 'nessuna soluzione') + '</span>'; $('#lugTab').innerHTML = ''; return; }
@@ -801,9 +803,29 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     }
     const lugL = numv('#lugL') || 0.55, lugWd = numv('#lugWd') || 0.15;
     LUG.custom ||= {};
-    const pts = r.points.map((p, k) => lm.pointAt(p.gi, LUG.custom[k] != null ? LUG.custom[k] : p.u, lugL, lugWd));
+    let pts = r.points.map((p, k) => lm.pointAt(p.gi, LUG.custom[k] != null ? LUG.custom[k] : p.u, lugL, lugWd));
+    let ropeFail = [];
+    if (rope) { // un golfare resta dov'è, gli altri scorrono sulla loro trave finché le funi hanno la stessa lunghezza
+      const an = Math.min(Math.max(0, +$('#lugAnchor').value || 0), pts.length - 1);
+      [...$('#lugAnchor').options].forEach((o, i) => { o.hidden = i >= pts.length; });
+      if (+$('#lugAnchor').value >= pts.length) $('#lugAnchor').value = '0';
+      if (!(numv('#lugH') > 0)) $('#lugH').value = dec(Math.round(Math.max(...pts.map(p => p.d)) * Math.tan(Math.PI / 3) * 10) / 10, 1);
+      const Hh = numv('#lugH');
+      for (let it = 0; it < 4; it++) {
+        const hz = Math.max(...pts.map(p => p.z)) + Hh, L0 = Math.hypot(pts[an].d, hz - pts[an].z); ropeFail = [];
+        pts = pts.map((p, k) => {
+          if (k === an) return p;
+          const sg = Math.sign(p.u) || 1, f = w => { const q = lm.pointAt(p.gi, sg * w, lugL, lugWd); return Math.hypot(q.d, hz - q.z) - L0; };
+          let lo = 0.3, hi = sg > 0 ? lm.umax - 0.3 : -lm.umin - 0.3;
+          if (f(lo) > 0) { ropeFail.push(k); return lm.pointAt(p.gi, sg * lo, lugL, lugWd); }
+          if (f(hi) < 0) { ropeFail.push(k); return lm.pointAt(p.gi, sg * hi, lugL, lugWd); }
+          for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (f(mid) < 0) lo = mid; else hi = mid; }
+          return lm.pointAt(p.gi, sg * (lo + hi) / 2, lugL, lugWd);
+        });
+      }
+    }
     const moved = Object.keys(LUG.custom).length > 0;
-    const axial = $('#lugMetric').value !== 'radial';
+    const axial = $('#lugMetric').value === 'axial';
     const ds = pts.map(p => axial ? Math.abs(p.u) : p.d), dmax = Math.max(...ds), dmin = Math.min(...ds);
     const dRad = Math.max(...pts.map(p => p.d));
     let H = numv('#lugH'); if (!(H > 0)) { H = Math.round(dRad * Math.tan(Math.PI / 3) * 10) / 10; $('#lugH').value = dec(H, 1); }
@@ -830,7 +852,9 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     if (rows.some(x => x.alpha < 45)) warn.push('<span class="warn">fune con angolo inferiore a 45°: alza il gancio</span>');
     const Ps = rows.map(x => x.P); if (Math.max(...Ps) > 2 * Math.min(...Ps)) warn.push('<span class="warn">carichi molto sbilanciati: il baricentro non è centrato fra i golfari scelti</span>');
     if (rows.some(x => !x.type || !x.shackle)) warn.push('<span class="ko">tiro oltre il catalogo di golfari o grilli</span>');
-    if ((man || moved) && rows.some(x => x.near > 0.15)) warn.push('<span class="warn">un golfare non è in asse a un diaframma o irrigidimento</span>');
+    if (rope && ropeFail.length) warn.push('<span class="ko">non riesco a pareggiare la fune di ' + ropeFail.map(k => 'G' + (k + 1)).join(', ') + ': cambia il golfare fisso o la sua posizione</span>');
+    if (rope) { const Ls = rows.map(x => x.Ls); warn.push(`<span class="ok">funi: ${nf(Math.min(...Ls), 3)}–${nf(Math.max(...Ls), 3)} m</span>`); }
+    if ((man || moved || rope) && rows.some(x => x.near > 0.15)) warn.push('<span class="warn">un golfare non è in asse a un diaframma o irrigidimento</span>');
     $('#lugSum').innerHTML = `${axial ? 'Distanza lungo l\'asse' : 'Distanza in pianta'} dal baricentro ${nf(LUG.res.R, 3)} m · scarto fra i golfari <b>${nf(LUG.res.dev * 1000, 0)} mm</b> · gancio a quota ${nf(hookZ + ref[2], 2)} m` + (warn.length ? '<br>' + warn.join(' · ') : ' · <span class="ok">✓ tutti i golfari appoggiano sulla piattabanda</span>');
     $('#lugTab').innerHTML = '<tr><th>Golf.</th><th>Trave</th><th>Asse m</th><th>Pianta m</th><th>Carico t</th><th>Tiro t</th><th>Fune °</th><th>Appoggio</th><th>Da asse</th><th>Fune m</th><th>Golfare</th><th>Grillo</th><th>Sposta</th><th>X gruppo</th><th>Y gruppo</th><th>Z</th></tr>' +
       rows.map(x => `<tr><td>G${x.k}</td><td>${x.g}</td><td>${nf(Math.abs(x.u), 3)}</td><td>${nf(x.d, 3)}</td><td>${nf(x.P, 1)}</td><td><b>${nf(x.T, 1)}</b></td><td class="${x.alpha < 45 ? 'warn' : ''}">${nf(x.alpha, 1)}</td><td class="${x.support >= 0.9 ? 'ok' : 'ko'}">${nf(x.support * 100, 0)}%${x.studs ? ' · ' + x.studs + ' p.' : ''}</td><td>${x.near == null ? '–' : nf(x.near * 1000, 0) + ' mm'}</td><td>${nf(x.Ls, 2)}</td><td class="${x.type ? '' : 'ko'}">${esc(x.type || 'oltre catalogo')}</td><td class="${x.shackle ? '' : 'ko'}">${esc(x.shackle || 'oltre catalogo')}</td><td><button class="sm" data-mv="${x.k - 1}" data-dir="-1" title="Asse più vicino al baricentro">‹</button><button class="sm" data-mv="${x.k - 1}" data-dir="1" title="Asse più lontano dal baricentro">›</button><button class="sm" data-pk="${x.k - 1}" title="Clicca un punto nel modello">⌖</button>${x.moved ? ' ✎' : ''}</td><td>${nf(x.rl[0], 3)}</td><td>${nf(x.rl[1], 3)}</td><td>${nf(x.z, 3)}</td></tr>`).join('');
@@ -844,17 +868,18 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const sg = Math.sign(row.u) || 1, a = sg * row.u;
     const cand = dir > 0 ? st.filter(u => sg * u > a + 0.05).sort((x, y) => sg * x - sg * y)[0] : st.filter(u => sg * u < a - 0.05 && sg * u > 0.3).sort((x, y) => sg * y - sg * x)[0];
     if (cand == null) { lugMsg(dir > 0 ? 'Non ci sono altri assi verso l\'estremità.' : 'Non ci sono altri assi verso il baricentro.'); return; }
-    LUG.custom[k] = cand; computeLugs();
+    LUG.custom[k] = cand; if ($('#lugMetric').value === 'rope') $('#lugAnchor').value = String(k); computeLugs();
   }
   function lugPicked(k, p) {
     if (!LUG) return; const {lm, geo} = LUG;
     const dx = p.x - geo.ref2[0] - geo.cogR[0], dy = p.y - geo.ref2[1] - geo.cogR[1];
-    LUG.custom[k] = dx * lm.ax[0] + dy * lm.ax[1]; computeLugs(); lugMsg(`Golfare G${k + 1} spostato sul punto cliccato.`);
+    LUG.custom[k] = dx * lm.ax[0] + dy * lm.ax[1]; if ($('#lugMetric').value === 'rope') $('#lugAnchor').value = String(k); computeLugs(); lugMsg(`Golfare G${k + 1} spostato sul punto cliccato.`);
   }
   function lugResetCustom() { if (LUG) LUG.custom = {}; }
   $('#lugReset').onclick = () => { lugResetCustom(); computeLugs(); };
   $('#lugFd').onchange = computeLugs;
   $('#catLug').onchange = $('#catSh').onchange = () => { store.catalog = {lugs: $('#catLug').value, shackles: $('#catSh').value}; store.catalogT = Date.now(); store.dirty = true; save(); computeLugs(); };
+  $('#lugAnchor').onchange = () => computeLugs();
   $('#lugMetric').onchange = () => { if (LUG) LUG.alt = 0; lugResetCustom(); computeLugs(); };
   ['#lugN'].forEach(k => $(k).onchange = () => { lugResetCustom(); renderGirders(); LUG && (LUG.alt = 0); computeLugs(); });
   const setWcalc = () => { if (!LUG) return; const c = LUG.c, v = numv('#lugW'), wm = c.W / 1000;
@@ -868,7 +893,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   $('#lugClose').onclick = () => { $('#lugBox').hidden = true; LUG = null; drawIcons(); };
   $('#lugSave').onclick = async () => {
     if (!LUG || !LUG.res) return; setWcalc(); const {c, res} = LUG;
-    c.lugs = {cogRef: c.cog.slice(), nRef: c.n, off: LUG.geo.off, model: LUG.geo.model, cog: LUG.geo.cog, ax: res.ax, custom: {...LUG.custom}, fd: res.fd, metric: $('#lugMetric').value, n: res.n, girders: res.gs, mode: res.mode, alt: LUG.alt || 0, R: res.R, dev: res.dev, H: res.H, W: res.W, lugL: res.lugL, lugWd: res.lugWd, hook: res.hook,
+    c.lugs = {cogRef: c.cog.slice(), nRef: c.n, off: LUG.geo.off, model: LUG.geo.model, cog: LUG.geo.cog, ax: res.ax, custom: {...LUG.custom}, fd: res.fd, metric: $('#lugMetric').value, anchor: +$('#lugAnchor').value || 0, n: res.n, girders: res.gs, mode: res.mode, alt: LUG.alt || 0, R: res.R, dev: res.dev, H: res.H, W: res.W, lugL: res.lugL, lugWd: res.lugWd, hook: res.hook,
       points: res.rows.map(x => ({type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
     c.ed = Date.now(); save(); render(); await drawIcons();
     lugMsg(`<span class="ok">Golfari salvati in "${esc(c.name)}".</span>`);
