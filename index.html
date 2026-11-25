@@ -120,17 +120,17 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   <div id="lugForm" hidden style="display:flex;flex-direction:column;gap:7px">
     <div class="g3">
       <label class="f">Numero<select id="lugN"><option value="4">4 golfari</option><option value="2">2 golfari</option></select></label>
-      <label class="f">Peso di calcolo (t)<input type="number" id="lugW" step="0.1"></label>
-      <label class="f">Gancio sopra golfari (m)<input type="number" id="lugH" step="0.1"></label>
+      <label class="f">Peso di calcolo (t)<input type="text" inputmode="decimal" id="lugW" step="0.1"></label>
+      <label class="f">Gancio sopra golfari (m)<input type="text" inputmode="decimal" id="lugH" step="0.1"></label>
     </div>
     <label class="f">Equidistanza dal baricentro<select id="lugMetric"><option value="axial">lungo l'asse del concio (golfari simmetrici, carichi uguali)</option><option value="radial">in pianta, dal baricentro (funi della stessa lunghezza)</option></select></label>
     <div><div class="note">Travi su cui posare i golfari (piattabanda in asse all'anima):</div><div id="lugGirders" class="row"></div></div>
     <label class="row"><input type="radio" name="lugMode" value="auto" checked> Sugli assi di diaframmi/irrigidimenti <select id="lugAlt" class="grow" aria-label="Soluzione proposta"></select></label>
-    <label class="row"><input type="radio" name="lugMode" value="man"> Distanza imposta dal baricentro <input type="number" id="lugR" step="0.05" style="width:90px"> m</label>
-    <details><summary class="note">Impronta del golfare</summary><div class="g3" style="margin-top:4px"><label class="f">Lunghezza (m)<input type="number" id="lugL" value="0.55" step="0.01"></label><label class="f">Larghezza (m)<input type="number" id="lugWd" value="0.15" step="0.01"></label></div></details>
+    <label class="row"><input type="radio" name="lugMode" value="man"> Distanza imposta dal baricentro <input type="text" inputmode="decimal" id="lugR" step="0.05" style="width:90px"> m</label>
+    <details><summary class="note">Impronta del golfare</summary><div class="g3" style="margin-top:4px"><label class="f">Lunghezza (m)<input type="text" inputmode="decimal" id="lugL" value="0,55" step="0.01"></label><label class="f">Larghezza (m)<input type="text" inputmode="decimal" id="lugWd" value="0,15" step="0.01"></label></div></details>
     <details><summary class="note">Catalogo golfari e grilli · coefficiente dinamico</summary>
       <div style="display:flex;flex-direction:column;gap:5px;margin-top:5px">
-        <label class="f">Coefficiente dinamico sul tiro<input type="number" id="lugFd" value="1.00" step="0.05" style="width:90px"></label>
+        <label class="f">Coefficiente dinamico sul tiro<input type="text" inputmode="decimal" id="lugFd" value="1,00" step="0.05" style="width:90px"></label>
         <label class="f">Golfari (una riga per tipo: nome ; portata in t)<textarea id="catLug" rows="3" style="font:12px var(--m)"></textarea></label>
         <label class="f">Grilli (nome ; portata WLL in t)<textarea id="catSh" rows="4" style="font:12px var(--m)"></textarea></label>
         <div class="note">Per ogni golfare viene proposto il tipo più piccolo con portata ≥ tiro × coefficiente. Il catalogo è condiviso con il progetto: sostituisci i valori di esempio con i vostri.</div>
@@ -161,12 +161,12 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   <label class="row"><input type="checkbox" id="boltD"> Disegna i bulloni nelle tavole</label>
   <label class="row">Densità per elementi senza peso <input type="number" id="rho" value="7850" step="10" style="width:80px"> kg/m³</label>
   <div class="note">Peso: proprietà del modello (es. "Tekla Quantity · Weight"); se manca, volume × densità. Baricentro: media dei centri dei pezzi pesata sul loro peso. Con travi, lamiere e piatti l'errore è di pochi centimetri; pezzi molto obliqui o sagomati possono spostarlo di più. I bulloni non hanno peso nelle proprietà Tekla e non vengono conteggiati. Gruppi e baricentri sono condivisi nel progetto (PesoBaricentro/baricentri.json).</div>
-  <div class="note">Versione 9 · 20/11/2026</div>
+  <div class="note" id="pbVer"></div>
 </details>
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js"></script>
+<script src="draw.js?v=13"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -176,7 +176,8 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '12 (25/11/2026)';
+  const PB_VERSION = '13 (25/11/2026)';
+  { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store;
 
@@ -358,15 +359,17 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     if (c.lugs.cogRef) return d(c.lugs.cogRef, c.cog) > 0.005 || (c.lugs.nRef != null && c.lugs.nRef !== c.n);
     return d(c.lugs.cog, c.cog) > 0.25; // dati salvati prima della v11: confronto approssimato
   }
+  let iconSeq = 1000000 + Math.floor(Math.random() * 900000), iconMap = new Map();
   async function drawIcons() {
     await removeIcons(drawn); drawn = [];
     if (!showIcons) return;
-    const icons = [];
-    store.groups.forEach(g => g.cogs.forEach(c => icons.push({id: c.id, iconPath: iconUrl(g), position: {x: c.cog[0], y: c.cog[1], z: c.cog[2]}, size: 30})));
+    const icons = []; iconMap = new Map();
+    const nid = cid => { iconSeq = iconSeq >= 1999999 ? 1000001 : iconSeq + 1; iconMap.set(iconSeq, cid); return iconSeq; };
+    store.groups.forEach(g => g.cogs.forEach(c => icons.push({id: nid(c.id), iconPath: iconUrl(g), position: {x: c.cog[0], y: c.cog[1], z: c.cog[2]}, size: 30})));
     const lugUrl = new URL('lug.png?v=1', location.href).href;
     store.groups.forEach(g => g.cogs.forEach(c => {
       const pts = (LUG && LUG.c === c && LUG.preview) ? LUG.preview : (c.lugs && !lugStale(c) ? c.lugs.points : []);
-      pts.forEach((p, k) => icons.push({id: c.id * 10 + k + 1, iconPath: lugUrl, position: {x: p.x, y: p.y, z: p.z + 0.15}, size: 26}));
+      pts.forEach((p, k) => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: p.x, y: p.y, z: p.z + 0.15}, size: 26}));
     }));
     try { localStorage.setItem(KEY + ':icons', JSON.stringify(icons.map(i => i.id))); } catch (e) {}
     if (icons.length) { try { await api.viewer.addIcon(icons); drawn = icons; } catch (e) { setState('<span class="warn">Il visualizzatore non ha accettato i segni: ' + esc(e && e.message || e) + '</span>'); } }
@@ -410,7 +413,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const el = document.querySelector(`[data-c="${c.id}"]`); if (el) el.scrollIntoView({block: 'nearest'});
   }
   function onIconPicked(icons) {
-    const id = icons && icons[0] && icons[0].id; if (id == null) return;
+    const ic = icons && icons[0] && icons[0].id; if (ic == null) return; const id = iconMap.get(ic) ?? ic;
     for (let gi = 0; gi < store.groups.length; gi++) { const c = store.groups[gi].cogs.find(x => x.id === id); if (c) { store.active = gi; save(); focusCog(c, store.groups[gi]); return; } }
   }
   $('#clearHl').onclick = async () => { await clearHighlight(); $('#showAll').setAttribute('aria-pressed', 'false'); render(); };
@@ -736,6 +739,8 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   }
   // ================= golfari =================
   let LUG = null;
+  const numv = sel => { const v = parseFloat(String($(sel).value).replace(/\s/g, '').replace(',', '.')); return isFinite(v) ? v : NaN; };
+  const dec = (v, k) => v.toFixed(k).replace('.', ',');
   const lugMsg = (t, busy) => { $('#lugState').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   async function openLugs(c, g) {
     if (!c) return;
@@ -752,12 +757,12 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       // concio cambiato: si tengono numero e criteri, ma travi e spostamenti manuali si ricalcolano
       const sv = old ? {n: sv0.n, metric: sv0.metric, H: sv0.H, fd: sv0.fd, lugL: sv0.lugL, lugWd: sv0.lugWd} : sv0;
       $('#lugN').value = String(sv.n || (lm.girders.length > 1 ? 4 : 2)); $('#lugMetric').value = sv.metric || 'axial';
-      $('#lugW').value = (c.Wcalc || (lugStale(c) ? 0 : sv.W) || geo.W / 1000).toFixed(2);
-      $('#lugH').value = sv.H ? sv.H.toFixed(1) : '';
+      $('#lugW').value = dec(c.Wcalc || c.W / 1000, 2); // peso della scheda (pesi del modello) salvo valore scritto a mano
+      $('#lugH').value = sv.H ? dec(sv.H, 1) : '';
       document.querySelector(`input[name=lugMode][value=${sv.mode === 'manuale' ? 'man' : 'auto'}]`).checked = true;
-      $('#lugR').value = sv.R ? sv.R.toFixed(2) : '';
+      $('#lugR').value = sv.R ? dec(sv.R, 2) : '';
       LUG.alt = sv.alt || 0; LUG.custom = sv.custom ? {...sv.custom} : {};
-      $('#catLug').value = store.catalog.lugs; $('#catSh').value = store.catalog.shackles; $('#lugFd').value = (sv.fd || 1).toFixed(2);
+      $('#catLug').value = store.catalog.lugs; $('#catSh').value = store.catalog.shackles; $('#lugFd').value = dec(sv.fd || 1, 2);
       renderGirders(sv.girders);
       $('#lugForm').hidden = false;
       lugMsg(`Trovate ${lm.girders.length} piattabande e ${lm.stations.reduce((a, s) => a + s.length, 0)} assi di diaframmi/irrigidimenti. Macroconcio lungo ${nf(lm.length, 2)} m.` + (geo.mism > 0.05 ? ' <span class="warn">Coordinate IFC e visualizzatore non perfettamente allineate.</span>' : ''));
@@ -777,26 +782,26 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const need = n / 2;
     if (gs.length !== need) { $('#lugSum').innerHTML = `<span class="warn">Per ${n} golfari scegli ${need === 1 ? 'una trave' : 'due travi'}.</span>`; $('#lugTab').innerHTML = ''; LUG.res = null; LUG.preview = null; drawIcons(); return; }
     const man = document.querySelector('input[name=lugMode]:checked').value === 'man';
-    const cfg = {n, girders: gs, alt: LUG.alt || 0, metric: $('#lugMetric').value, lugL: +$('#lugL').value || 0.55, lugW: +$('#lugWd').value || 0.15}; if (man) cfg.R = +$('#lugR').value || 0;
+    const cfg = {n, girders: gs, alt: LUG.alt || 0, metric: $('#lugMetric').value, lugL: numv('#lugL') || 0.55, lugW: numv('#lugWd') || 0.15}; if (man) cfg.R = numv('#lugR') || 0;
     if (man && !(cfg.R > 0.5)) { $('#lugSum').innerHTML = '<span class="warn">Scrivi la distanza dal baricentro.</span>'; return; }
     const r = PBDraw.placeLugs(lm, cfg);
     if (r.error || !r.points.length) { $('#lugSum').innerHTML = '<span class="ko">' + esc(r.error || 'nessuna soluzione') + '</span>'; $('#lugTab').innerHTML = ''; return; }
     if (!man) {
       $('#lugAlt').innerHTML = r.alternatives.map((a, i) => `<option value="${i}" ${i === (LUG.alt || 0) ? 'selected' : ''}>${nf(a.mean, 2)} m dal baricentro · scarto ${nf(a.dev * 1000, 0)} mm</option>`).join('');
-      $('#lugR').value = r.R.toFixed(2);
+      $('#lugR').value = dec(r.R, 2);
     }
-    const lugL = +$('#lugL').value || 0.55, lugWd = +$('#lugWd').value || 0.15;
+    const lugL = numv('#lugL') || 0.55, lugWd = numv('#lugWd') || 0.15;
     LUG.custom ||= {};
     const pts = r.points.map((p, k) => lm.pointAt(p.gi, LUG.custom[k] != null ? LUG.custom[k] : p.u, lugL, lugWd));
     const moved = Object.keys(LUG.custom).length > 0;
     const axial = $('#lugMetric').value !== 'radial';
     const ds = pts.map(p => axial ? Math.abs(p.u) : p.d), dmax = Math.max(...ds), dmin = Math.min(...ds);
     const dRad = Math.max(...pts.map(p => p.d));
-    let H = +$('#lugH').value; if (!(H > 0)) { H = Math.round(dRad * Math.tan(Math.PI / 3) * 10) / 10; $('#lugH').value = H.toFixed(1); }
+    let H = numv('#lugH'); if (!(H > 0)) { H = Math.round(dRad * Math.tan(Math.PI / 3) * 10) / 10; $('#lugH').value = dec(H, 1); }
     const zTop = Math.max(...pts.map(p => p.z)), hookZ = zTop + H;
-    const W = +$('#lugW').value || geo.W / 1000;
+    const W = numv('#lugW') || c.W / 1000;
     const f = PBDraw.slingForces(pts, W, hookZ);
-    const fd = +$('#lugFd').value || 1;
+    const fd = numv('#lugFd') || 1;
     const cat = txt => String(txt || '').split('\n').map(l => l.split(';')).filter(a => a.length >= 2).map(a => ({name: a[0].trim(), cap: parseFloat(a[1].replace(',', '.'))})).filter(x => x.name && x.cap > 0).sort((a, b) => a.cap - b.cap);
     const cLug = cat(store.catalog.lugs), cSh = cat(store.catalog.shackles);
     const pick = (list, T) => { const x = list.find(it => it.cap >= T); return x ? x.name : null; };
@@ -843,17 +848,17 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   $('#catLug').onchange = $('#catSh').onchange = () => { store.catalog = {lugs: $('#catLug').value, shackles: $('#catSh').value}; store.catalogT = Date.now(); store.dirty = true; save(); computeLugs(); };
   $('#lugMetric').onchange = () => { if (LUG) LUG.alt = 0; lugResetCustom(); computeLugs(); };
   ['#lugN'].forEach(k => $(k).onchange = () => { lugResetCustom(); renderGirders(); LUG && (LUG.alt = 0); computeLugs(); });
-  const setWcalc = () => { if (!LUG) return; const v = +String($('#lugW').value).replace(',', '.'), wm = LUG.geo.W / 1000, c = LUG.c;
+  const setWcalc = () => { if (!LUG) return; const c = LUG.c, v = numv('#lugW'), wm = c.W / 1000;
     const nv = v > 0 && Math.abs(v - wm) >= 0.005 ? Math.round(v * 1000) / 1000 : null;
     if ((c.Wcalc || null) !== nv) { if (nv) c.Wcalc = nv; else delete c.Wcalc; c.ed = Date.now(); save(); render(); } };
-  $('#lugW').oninput = () => { if (+$('#lugW').value > 0) computeLugs(); };
+  $('#lugW').oninput = () => { if (numv('#lugW') > 0) computeLugs(); };
   $('#lugW').addEventListener('change', setWcalc);
   ['#lugW', '#lugH', '#lugR', '#lugL', '#lugWd'].forEach(k => $(k).onchange = () => { if (k === '#lugR') document.querySelector('input[name=lugMode][value=man]').checked = true; computeLugs(); });
   $('#lugAlt').onchange = e => { if (LUG) { lugResetCustom(); LUG.alt = +e.target.value; document.querySelector('input[name=lugMode][value=auto]').checked = true; computeLugs(); } };
   document.querySelectorAll('input[name=lugMode]').forEach(el => el.onchange = () => { if (LUG && el.value === 'auto') LUG.alt = +$('#lugAlt').value || 0; computeLugs(); });
   $('#lugClose').onclick = () => { $('#lugBox').hidden = true; LUG = null; drawIcons(); };
   $('#lugSave').onclick = async () => {
-    if (!LUG || !LUG.res) return; const {c, res} = LUG;
+    if (!LUG || !LUG.res) return; setWcalc(); const {c, res} = LUG;
     c.lugs = {cogRef: c.cog.slice(), nRef: c.n, off: LUG.geo.off, model: LUG.geo.model, cog: LUG.geo.cog, ax: res.ax, custom: {...LUG.custom}, fd: res.fd, metric: $('#lugMetric').value, n: res.n, girders: res.gs, mode: res.mode, alt: LUG.alt || 0, R: res.R, dev: res.dev, H: res.H, W: res.W, lugL: res.lugL, lugWd: res.lugWd, hook: res.hook,
       points: res.rows.map(x => ({type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
     c.ed = Date.now(); save(); render(); await drawIcons();
