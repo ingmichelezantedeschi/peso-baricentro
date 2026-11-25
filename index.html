@@ -34,6 +34,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 input,select{font:12.5px var(--f);padding:4px 6px;border:1px solid var(--line);border-radius:4px;min-width:0;background:#fff;color:var(--ink)}
 input[type=number]{font-family:var(--m);width:100%}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.g4{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px}
+#ecTab td:first-child{font-family:inherit;white-space:normal}
+table.lt td.okc{color:#1a7f37;font-weight:700} table.lt td.koc{color:#c62828;font-weight:700;background:#fdecea}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
 label.f{display:flex;flex-direction:column;gap:1px;font-size:11px;color:var(--muted)}
 .note{font-size:11.5px;color:var(--muted)}
@@ -142,9 +145,35 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     </details>
     <div id="lugSum" class="note"></div>
     <div class="tw"><table class="lt" id="lugTab"></table></div>
+    <details id="ecBox" open style="margin-top:8px"><summary><b>Verifica golfare EN 1993-1-8</b> <span class="note" id="ecSum"></span></summary>
+      <div class="note" style="margin:4px 0">Piastra con foro e perno (grillo) saldata alla piattabanda. Per ogni golfare: tiro della fune, angolo sull'orizzontale e angolo rispetto al piano della piastra, presi dal modello. Stesse formule del foglio "Calcolo golfari".</div>
+      <div class="g4">
+        <label class="f">Lunghezza piastra L (mm)<input type="text" inputmode="decimal" data-ec="L"></label>
+        <label class="f">Spessore t (mm)<input type="text" inputmode="decimal" data-ec="t"></label>
+        <label class="f">Raggio R (mm)<input type="text" inputmode="decimal" data-ec="R"></label>
+        <label class="f">Eccentricità foro ev (mm)<input type="text" inputmode="decimal" data-ec="ev"></label>
+        <label class="f">Diametro perno d (mm)<input type="text" inputmode="decimal" data-ec="d"></label>
+        <label class="f">Diametro foro d0 (mm)<input type="text" inputmode="decimal" data-ec="d0"></label>
+        <label class="f">Giunto con la piattabanda<select data-ec="prep"><option value="fillet">Cordoni d'angolo</option><option value="K">Doppio cianfrino a V (K), piena penetrazione</option></select></label>
+        <label class="f ecK">Angolo cianfrino (°)<input type="text" inputmode="decimal" data-ec="bev"></label>
+        <label class="f ecK">Spalla c (mm)<input type="text" inputmode="decimal" data-ec="root"></label>
+        <label class="f ecF">Gola saldatura a (mm)<input type="text" inputmode="decimal" data-ec="as"></label>
+        <label class="f ecF">Numero cordoni<input type="text" inputmode="decimal" data-ec="n"></label>
+        <label class="f">Acciaio<select data-ec="mat"><option>S235</option><option>S275</option><option>S355</option><option>S420</option><option>S460</option></select></label>
+        <label class="f">γM0<input type="text" inputmode="decimal" data-ec="gM0"></label>
+        <label class="f">γM2<input type="text" inputmode="decimal" data-ec="gM2"></label>
+        <label class="f">γM6,ser<input type="text" inputmode="decimal" data-ec="gM6"></label>
+        <label class="f">Coeff. amplificativo γtot<input type="text" inputmode="decimal" data-ec="gtot"></label>
+        <label class="f">Forza fuori piano aggiuntiva (%)<input type="text" inputmode="decimal" data-ec="pOut"></label>
+      </div>
+      <div class="tw" style="margin-top:6px"><table class="lt" id="ecTab"></table></div>
+      <div class="row" style="margin-top:6px"><b style="font-size:12px">Disegno d'officina del golfare:</b><button class="sm pri" id="shopPdf">PDF</button><button class="sm" id="shopDxf">DXF 1:1</button></div>
+      <div class="note">FEk = tiro della fune (senza coefficiente dinamico), FEd = γtot · FEk. In rosso le verifiche non soddisfatte (rapporto &gt; 1). Passando sul rapporto si leggono sollecitazione e resistenza. I dati della piastra valgono per tutto il progetto e sono condivisi.</div>
+    </details>
     <div class="row"><button class="sm pri" id="lugSave">Salva nel baricentro</button><button class="sm" id="lugCopy">Copia tabella</button><button class="sm" id="lugReset" title="Torna alla proposta automatica">Annulla spostamenti</button></div>
     <div class="row"><b style="font-size:12px">Esporta:</b><button class="sm pri" id="lugPdf">Tavola PDF</button><button class="sm" id="lugDxf">DXF</button><button class="sm" id="lugIfc">IFC funi e golfari</button></div>
     <div class="row"><b style="font-size:12px">Solo sagoma:</b><button class="sm" id="lugPdfO">Tavola sagoma PDF</button><button class="sm" id="lugDxfO">DXF sagoma</button></div>
+    <div class="row"><b style="font-size:12px">Posizionamento golfari:</b><select id="layRef" style="width:auto"><option value="macro">rispetto al macroconcio</option><option value="mark">rispetto alla singola marca</option></select><button class="sm" id="layPdf">PDF</button><button class="sm" id="layDxf">DXF</button></div>
     <div id="lugFiles" style="display:flex;flex-direction:column;gap:3px"></div>
     <div class="note">Nella tabella: ‹ e › spostano il golfare all'asse di diaframma più vicino o più lontano dal baricentro, sulla sua trave, ⌖ lo posiziona cliccando un punto nel modello.</div>
     <div class="note">Distanze in pianta dal baricentro. Carichi con ripartizione statica: per 4 golfari, prima fra le due travi e poi fra i due lati di ogni trave. Il tiro è il carico diviso per il seno dell'angolo della fune. Valori indicativi da verificare.</div>
@@ -170,7 +199,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=16"></script>
+<script src="draw.js?v=20"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -180,7 +209,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '16 (25/11/2026)';
+  const PB_VERSION = '20 (25/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store;
@@ -204,6 +233,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   try { store = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
   if (!store || !store.groups || !store.groups.length) store = {groups: [newGroup('Gruppo 1', 0)], active: 0, nextIcon: 1000, pristine: true};
   store.deleted ||= {g: [], c: []};
+  store.lugGeo = {...PBDraw.LUG_GEO_DEFAULT, ...(store.lugGeo || {})};
   store.catalog ||= {lugs: 'Tipo 1 (esempio) ; 55\nTipo 2 (esempio) ; 85',
     shackles: ['4,75', '6,5', '8,5', '9,5', '12', '13,5', '17', '25', '35', '55', '85', '120', '150'].map(w => `Grillo ${w} t ; ${w}`).join('\n')};
   // marca temporale delle modifiche: serve a unire le modifiche di più colleghi
@@ -601,6 +631,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       store.deleted = del;
     }
     if (rd.catalog && (rd.catalogT || 0) > (store.catalogT || 0)) { store.catalog = clone(rd.catalog); store.catalogT = rd.catalogT; }
+    if (rd.lugGeo && (rd.lugGeoT || 0) > (store.lugGeoT || 0)) { store.lugGeo = {...PBDraw.LUG_GEO_DEFAULT, ...clone(rd.lugGeo)}; store.lugGeoT = rd.lugGeoT; try { fillEc(); } catch (e) {} }
     if (!store.groups.length) store.groups.push(newGroup('Gruppo 1', 0));
     store.active = Math.max(0, Math.min(store.active || 0, store.groups.length - 1));
     resetSigs();
@@ -845,8 +876,12 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       const ax = {x: p.x + ref[0], y: p.y + ref[1], z: p.z + ref[2]}, rl = rel(g, [ax.x, ax.y, ax.z]);
       const st = lm.stations[p.gi]; const near = st.length ? Math.min(...st.map(s => Math.abs(s.u - p.u))) : null;
       const Td = f[k].T * fd;
-      return {type: pick(cLug, Td), shackle: pick(cSh, Td), Td, moved: LUG.custom[k] != null, k: k + 1, g: gName(p.gi), gi: p.gi, d: p.d, u: p.u, ...ax, rl, support: p.support, studs: p.studs, near, ...f[k]};
+      return {type: pick(cLug, Td), shackle: pick(cSh, Td), Td, moved: LUG.custom[k] != null, k: k + 1, g: gName(p.gi), gi: p.gi, d: p.d, u: p.u, ...ax, rl, support: p.support, studs: p.studs, el: p.el, near, ...f[k]};
     });
+    rows.forEach(x => { // angolo della fune rispetto al piano della piastra (piastra lungo l'asse della trave)
+      const dx = geo.cog[0] - x.x, dy = geo.cog[1] - x.y, dl = Math.hypot(dx, dy) || 1;
+      x.aH = Math.acos(Math.min(1, Math.abs(dx * lm.ax[0] + dy * lm.ax[1]) / dl)) * 180 / Math.PI;
+      x.ec = PBDraw.lugCheck(store.lugGeo, {FEk: x.T * 9.80665, aV: x.alpha, aH: x.aH}); });
     LUG.res = {fd, moved, ax: lm.ax, mode: moved ? 'personalizzata' : r.mode, R: (dmax + dmin) / 2, dev: dmax - dmin, rows, hook: [geo.cog[0], geo.cog[1], hookZ + ref[2]], H, W, n, gs, lugL, lugWd};
     LUG.preview = rows.map(rw => ({x: rw.x, y: rw.y, z: rw.z}));
     const warn = [];
@@ -859,12 +894,82 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     if (rope) { const Ls = rows.map(x => x.Ls); warn.push(`<span class="ok">funi: ${nf(Math.min(...Ls), 3)}–${nf(Math.max(...Ls), 3)} m</span>`); }
     if ((man || moved || rope) && rows.some(x => x.near > 0.15)) warn.push('<span class="warn">un golfare non è in asse a un diaframma o irrigidimento</span>');
     $('#lugSum').innerHTML = `${axial ? 'Distanza lungo l\'asse' : 'Distanza in pianta'} dal baricentro ${nf(LUG.res.R, 3)} m · scarto fra i golfari <b>${nf(LUG.res.dev * 1000, 0)} mm</b> · gancio a quota ${nf(hookZ + ref[2], 2)} m` + (warn.length ? '<br>' + warn.join(' · ') : ' · <span class="ok">✓ tutti i golfari appoggiano sulla piattabanda</span>');
-    $('#lugTab').innerHTML = '<tr><th>Golf.</th><th>Trave</th><th class="k">Carico t</th><th class="k">Tiro t</th><th class="k">Fune m</th><th class="k">Angolo °</th><th>Asse m</th><th>Pianta m</th><th>Appoggio</th><th>Da asse</th><th>Golfare</th><th>Grillo</th><th>Sposta</th></tr>' +
-      rows.map(x => `<tr><td>G${x.k}</td><td>${x.g}</td><td class="k">${nf(x.P, 1)}</td><td class="k">${nf(x.T, 1)}</td><td class="k">${nf(x.Ls, 2)}</td><td class="k ${x.alpha < 45 ? 'warn' : ''}">${nf(x.alpha, 1)}</td><td>${nf(Math.abs(x.u), 3)}</td><td>${nf(x.d, 3)}</td><td class="${x.support >= 0.9 ? 'ok' : 'ko'}">${nf(x.support * 100, 0)}%${x.studs ? ' · ' + x.studs + ' p.' : ''}</td><td>${x.near == null ? '–' : nf(x.near * 1000, 0) + ' mm'}</td><td class="${x.type ? '' : 'ko'}">${esc(x.type || 'oltre catalogo')}</td><td class="${x.shackle ? '' : 'ko'}">${esc(x.shackle || 'oltre catalogo')}</td><td><button class="sm" data-mv="${x.k - 1}" data-dir="-1" title="Asse più vicino al baricentro">‹</button><button class="sm" data-mv="${x.k - 1}" data-dir="1" title="Asse più lontano dal baricentro">›</button><button class="sm" data-pk="${x.k - 1}" title="Clicca un punto nel modello">⌖</button>${x.moved ? ' ✎' : ''}</td></tr>`).join('');
+    $('#lugTab').innerHTML = '<tr><th>Golf.</th><th>Trave</th><th class="k">Carico t</th><th class="k">Tiro t</th><th class="k">Fune m</th><th class="k">Angolo °</th><th class="k">EC3</th><th>Asse m</th><th>Pianta m</th><th>Appoggio</th><th>Da asse</th><th>Golfare</th><th>Grillo</th><th>Sposta</th></tr>' +
+      rows.map(x => `<tr><td>G${x.k}</td><td>${x.g}</td><td class="k">${nf(x.P, 1)}</td><td class="k">${nf(x.T, 1)}</td><td class="k">${nf(x.Ls, 2)}</td><td class="k ${x.alpha < 45 ? 'warn' : ''}">${nf(x.alpha, 1)}</td><td class="${x.ec.max <= 1 ? 'okc' : 'koc'}" title="Rapporto massimo della verifica EN 1993-1-8">${nf(x.ec.max, 2)}</td><td>${nf(Math.abs(x.u), 3)}</td><td>${nf(x.d, 3)}</td><td class="${x.support >= 0.9 ? 'ok' : 'ko'}">${nf(x.support * 100, 0)}%${x.studs ? ' · ' + x.studs + ' p.' : ''}</td><td>${x.near == null ? '–' : nf(x.near * 1000, 0) + ' mm'}</td><td class="${x.type ? '' : 'ko'}">${esc(x.type || 'oltre catalogo')}</td><td class="${x.shackle ? '' : 'ko'}">${esc(x.shackle || 'oltre catalogo')}</td><td><button class="sm" data-mv="${x.k - 1}" data-dir="-1" title="Asse più vicino al baricentro">‹</button><button class="sm" data-mv="${x.k - 1}" data-dir="1" title="Asse più lontano dal baricentro">›</button><button class="sm" data-pk="${x.k - 1}" title="Clicca un punto nel modello">⌖</button>${x.moved ? ' ✎' : ''}</td></tr>`).join('');
+    renderEc(rows);
     $('#lugTab').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => moveLug(+b.dataset.mv, +b.dataset.dir));
     $('#lugTab').querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { pickMode = 'lug:' + b.dataset.pk; try { api.viewer.activateTool('picking'); } catch (e) {} lugMsg(`Clicca nel modello il punto per il golfare G${+b.dataset.pk + 1}: viene portato sulla piattabanda della sua trave.`); });
     drawIcons();
   }
+  const EC_STR = ['mat', 'prep'];
+  function fillEc() { document.querySelectorAll('[data-ec]').forEach(el => { const k = el.dataset.ec, v = store.lugGeo[k]; el.value = EC_STR.includes(k) ? v : k === 'pOut' ? dec(v * 100, 0) : String(v).replace('.', ','); });
+    const K = store.lugGeo.prep === 'K'; document.querySelectorAll('.ecK').forEach(el => el.hidden = !K); document.querySelectorAll('.ecF').forEach(el => el.hidden = K); }
+  function renderEc(rows) {
+    if (!rows || !rows.length) { $('#ecTab').innerHTML = ''; $('#ecSum').textContent = ''; return; }
+    const e0 = rows[0].ec, cls = r => r <= 1 ? 'okc' : 'koc';
+    const line = (lab, f) => `<tr><td>${lab}</td>${rows.map(x => f(x)).join('')}</tr>`;
+    let h = `<tr><th>Verifica</th>${rows.map(x => `<th>G${x.k}</th>`).join('')}</tr>`;
+    h += line('FEk tiro fune (kN)', x => `<td>${nf(x.ec.FEk, 1)}</td>`) + line('FEd = γtot·FEk (kN)', x => `<td>${nf(x.ec.FEd, 1)}</td>`);
+    h += line('Angolo verticale αV (°)', x => `<td>${nf(x.alpha, 1)}</td>`) + line('Angolo dal piano piastra αH (°)', x => `<td>${nf(x.aH, 1)}</td>`);
+    e0.items.forEach((it, i) => { h += line(it.label, x => `<td class="${cls(x.ec.items[i].r)}" title="${nf(x.ec.items[i].ed, 1)} / ${nf(x.ec.items[i].rd, 1)} ${it.unit}">${nf(x.ec.items[i].r, 2)}</td>`); });
+    h += line('<b>Esito</b>', x => `<td class="${cls(x.ec.max)}">${x.ec.max <= 1 ? 'OK' : 'NO'}</td>`);
+    $('#ecTab').innerHTML = h;
+    const worst = Math.max(...rows.map(x => x.ec.max));
+    $('#ecSum').innerHTML = worst <= 1 ? `<span class="ok">✓ verificato · rapporto max ${nf(worst, 2)}</span>` : `<span class="ko">✗ non verificato · rapporto max ${nf(worst, 2)}</span>`;
+    $('#ecSum').title = `fy ${e0.fy} MPa · fu ${e0.fu} MPa · βw ${e0.bw} · a = c = ${nf(e0.a, 0)} mm`;
+  }
+  document.querySelectorAll('[data-ec]').forEach(el => el.onchange = () => {
+    const k = el.dataset.ec, str = EC_STR.includes(k); let v = str ? el.value : parseFloat(String(el.value).replace(',', '.'));
+    if (!str && !(v >= 0)) { fillEc(); return; }
+    if (k === 'pOut') v = v / 100;
+    store.lugGeo[k] = v; store.lugGeoT = Date.now(); store.dirty = true; save(); fillEc(); computeLugs();
+  });
+  fillEc();
+  async function shopExport(kind) {
+    if (!LUG || !LUG.res) { lugMsg('Calcola prima i golfari.'); return; }
+    try {
+      let proj = {}; try { proj = await api.project.getProject(); } catch (e) {}
+      const rows = LUG.res.rows, worst = Math.max(...rows.map(x => x.ec ? x.ec.max : 0));
+      const sh = PBDraw.buildLugShop(store.lugGeo, {name: LUG.c.name, project: proj.name || '', count: rows.length, ecMax: worst, shackle: rows.map(x => x.shackle).filter(Boolean).sort().pop()});
+      const base = safe(LUG.c.name) + '_golfare_officina';
+      if (kind === 'pdf') { const doc = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a3'}); PBDraw.toPdf(doc, sh.prims, false); saveFileTo('#lugFiles', base + '.pdf', doc.output('blob')); }
+      else saveFileTo('#lugFiles', base + '.dxf', new Blob([PBDraw.toDxf(sh.prims, sh.scale)], {type: 'application/dxf'}));
+      lugMsg(`Disegno del golfare pronto (scala 1:${sh.scale}${kind === 'dxf' ? ', DXF in mm reali' : ''}).`);
+    } catch (e) { lugMsg('<span class="ko">Disegno non riuscito: ' + esc(e && e.message || e) + '</span>'); }
+  }
+  $('#shopPdf').onclick = () => shopExport('pdf'); $('#shopDxf').onclick = () => shopExport('dxf');
+  // disegno di posizionamento: pianta e sezioni, con riferimento al macroconcio o alla marca su cui poggia ogni golfare
+  async function markName(part) {
+    try { const ids = await api.viewer.convertToObjectRuntimeIds(part.m, [part.g]); const pr = await api.viewer.getObjectProperties(part.m, ids.filter(x => x != null));
+      const mk = pr && pr[0] && markOf(pr[0]); if (mk) return mk; } catch (e) {}
+    return 'pezzo ' + String(part.g).slice(0, 8);
+  }
+  async function layoutExport(kind) {
+    if (!LUG || !LUG.res) { lugMsg('Calcola prima i golfari.'); return; }
+    try {
+      lugMsg('Preparazione del disegno di posizionamento…', true); await tick();
+      let proj = {}; try { proj = await api.project.getProject(); } catch (e) {}
+      const {c, geo, lm, res} = LUG, items = geo.items;
+      const lugs = res.rows.map(x => { const gd = lm.girderAt(x.gi, x.u); return {n: x.k, x: x.x, y: x.y, z: x.z, gv: gd.v, gw: gd.w, el: x.el}; });
+      const base = {ref: geo.ref2, ax: res.ax, cog: geo.cog, name: c.name, project: proj.name || '', geo: store.lugGeo};
+      const pages = [];
+      if ($('#layRef').value === 'macro') pages.push(PBDraw.buildLugLayout({...base, meshes: items.map(i => i.ms), lugs, refLabel: `macroconcio ${c.name}`}));
+      else {
+        const byPart = new Map();
+        lugs.forEach(l => { const it = items.find(i => i.ms === l.el); const key = it ? it.part.g : 'nd'; if (!byPart.has(key)) byPart.set(key, {part: it && it.part, lugs: []}); byPart.get(key).lugs.push(l); });
+        for (const {part, lugs: ls} of byPart.values()) {
+          const ms = part ? items.filter(i => i.part === part).map(i => i.ms) : items.map(i => i.ms);
+          const nm = part ? await markName(part) : c.name;
+          pages.push(PBDraw.buildLugLayout({...base, meshes: ms, lugs: ls, refLabel: part ? `marca ${nm}` : `macroconcio ${c.name}`}));
+        }
+      }
+      const fn = safe(c.name) + '_posizionamento_golfari' + ($('#layRef').value === 'mark' ? '_marche' : '');
+      if (kind === 'pdf') { const doc = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a3'}); pages.forEach((sh, i) => PBDraw.toPdf(doc, sh.prims, i > 0)); saveFileTo('#lugFiles', fn + '.pdf', doc.output('blob')); }
+      else saveFileTo('#lugFiles', fn + '.dxf', new Blob([PBDraw.toDxfMulti(pages.map(sh => ({prims: sh.prims, S: sh.scale})))], {type: 'application/dxf'}));
+      lugMsg(`Disegno di posizionamento pronto: ${pages.length} ${pages.length === 1 ? 'tavola' : 'tavole'}.`);
+    } catch (e) { lugMsg('<span class="ko">Disegno non riuscito: ' + esc(e && e.message || e) + '</span>'); }
+  }
+  $('#layPdf').onclick = () => layoutExport('pdf'); $('#layDxf').onclick = () => layoutExport('dxf');
   function moveLug(k, dir) {
     if (!LUG || !LUG.res) return; const row = LUG.res.rows[k], st = LUG.lm.stations[row.gi].map(s => s.u);
     // ‹ verso il baricentro, › verso l'estremità (sempre dallo stesso lato del baricentro)
@@ -897,7 +1002,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   $('#lugSave').onclick = async () => {
     if (!LUG || !LUG.res) return; setWcalc(); const {c, res} = LUG;
     c.lugs = {cogRef: c.cog.slice(), nRef: c.n, off: LUG.geo.off, model: LUG.geo.model, cog: LUG.geo.cog, ax: res.ax, custom: {...LUG.custom}, fd: res.fd, metric: $('#lugMetric').value, anchor: +$('#lugAnchor').value || 0, n: res.n, girders: res.gs, mode: res.mode, alt: LUG.alt || 0, R: res.R, dev: res.dev, H: res.H, W: res.W, lugL: res.lugL, lugWd: res.lugWd, hook: res.hook,
-      points: res.rows.map(x => ({type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
+      ec: {...store.lugGeo}, points: res.rows.map(x => ({ecMax: x.ec ? x.ec.max : null, aH: x.aH, type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
     c.ed = Date.now(); save(); render(); await drawIcons();
     lugMsg(`<span class="ok">Golfari salvati in "${esc(c.name)}".</span>`);
   };

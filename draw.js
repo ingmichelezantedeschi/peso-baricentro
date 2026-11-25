@@ -299,6 +299,8 @@
         for (let a = p.a0; a <= p.a1 + 0.01; a += 10) pts.push([p.c[0] + p.r * Math.cos(a * Math.PI / 180), Y(p.c[1] + p.r * Math.sin(a * Math.PI / 180))]);
         const lines = []; for (let i = 1; i < pts.length; i++) lines.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
         doc.lines(lines, pts[0][0], pts[0][1], [1, 1], 'F', true);
+      } else if (p.t === 'arc') { doc.setDrawColor(...c); doc.setLineWidth(p.w || 0.25); const n = Math.max(8, Math.ceil(Math.abs(p.a1 - p.a0) / 4)); let q = null;
+        for (let i = 0; i <= n; i++) { const a = (p.a0 + (p.a1 - p.a0) * i / n) * Math.PI / 180, r = [p.c[0] + p.r * Math.cos(a), Y(p.c[1] + p.r * Math.sin(a))]; if (q) doc.line(q[0], q[1], r[0], r[1]); q = r; }
       } else if (p.t === 'image') { try { doc.addImage(p.data, 'PNG', p.p[0], Y(p.p[1] + p.h), p.w, p.h); } catch (e) {}
       } else if (p.t === 'tbox') { // sfondo bianco sotto un testo (allineato a sinistra)
         doc.setFontSize(p.s / 0.3528); const w = doc.getTextWidth(p.txt), pd = p.s * 0.35;
@@ -323,6 +325,7 @@
     const fx = v => (v * k + ox).toFixed(3), f = v => (v * k).toFixed(3);
     for (const p of prims) {
       if (p.t === 'line') { g(0, 'LINE'); g(8, p.layer); g(10, fx(p.a[0])); g(20, f(p.a[1])); g(30, 0); g(11, fx(p.b[0])); g(21, f(p.b[1])); g(31, 0); }
+      else if (p.t === 'arc') { g(0, 'ARC'); g(8, p.layer); g(10, fx(p.c[0])); g(20, f(p.c[1])); g(30, 0); g(40, f(p.r)); g(50, (p.a0 % 360).toFixed(4)); g(51, (p.a1 % 360).toFixed(4)); }
       else if (p.t === 'circle') { g(0, 'CIRCLE'); g(8, p.layer); g(10, fx(p.c[0])); g(20, f(p.c[1])); g(30, 0); g(40, f(p.r)); }
       else if (p.t === 'sector') {
         for (let a = p.a0; a < p.a1; a += 15) { const b = Math.min(a + 15, p.a1), q = [p.c, [p.c[0] + p.r * Math.cos(a * Math.PI / 180), p.c[1] + p.r * Math.sin(a * Math.PI / 180)], [p.c[0] + p.r * Math.cos(b * Math.PI / 180), p.c[1] + p.r * Math.sin(b * Math.PI / 180)]];
@@ -338,7 +341,7 @@
     g(0, 'ENDSEC'); g(0, 'EOF');
     return o.join('\r\n') + '\r\n';
   }
-  function ascii(s) { return s.replace(/°/g, '%%d').replace(/[^\x20-\x7e%]/g, ch => ({'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u', '·': '-', '×': 'x', '₀': '0'}[ch] || '?')); }
+  function ascii(s) { return s.replace(/°/g, '%%d').replace(/[^\x20-\x7e%]/g, ch => ({'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u', '·': '-', '×': 'x', '₀': '0', 'Ø': '%%c', '–': '-', '’': "'"}[ch] || '?')); }
 
 
   // ------------------------------------------------------------------ GOLFARI
@@ -623,6 +626,256 @@
     for (let i = 0; i < m.pos.length; i += 3) for (let d = 0; d < 3; d++) { const v = m.pos[i + d]; if (v < lo[d]) lo[d] = v; if (v > hi[d]) hi[d] = v; }
     const s = [0, 1, 2].map(d => hi[d] - lo[d]).sort((a, b) => a - b);
     return s[1] < 0.06 && s[2] < 0.4;
+  }
+
+  // ------------------------------------------------------------------ VERIFICA GOLFARE EN 1993-1-8 (stesse formule del foglio MET-044_Calcolo_golfari)
+  // acciaio: fy, fu per t<=40 mm, fy, fu per t>40 mm, beta_w (prospetto 4.1)
+  const STEELS = {S235: [235, 360, 215, 360, 0.8], S275: [275, 430, 255, 410, 0.85], S355: [355, 510, 335, 470, 0.9], S420: [420, 520, 390, 520, 1.0], S460: [460, 540, 430, 540, 1.0]};
+  const LUG_GEO_DEFAULT = {L: 250, t: 20, d: 40, d0: 50, R: 75, ev: 76, as: 7, n: 2, mat: 'S355', gM0: 1.05, gM2: 1.25, gM6: 1.0, gtot: 2, pOut: 0.1, bw: 0, prep: 'fillet', bev: 45, root: 0};
+  /** g: geometria in mm e materiale; F: {FEk kN (tiro caratteristico), aV gradi (fune sull'orizzontale), aH gradi (fune rispetto al piano del golfare)} */
+  function lugCheck(g, F) {
+    const st = STEELS[g.mat] || STEELS.S355, t = g.t, L = g.L, d = g.d, d0 = g.d0, ev = g.ev, as = g.as, n = g.n;
+    const fy = t <= 40 ? st[0] : st[2], fu = t <= 40 ? st[1] : st[3], bw = g.bw > 0 ? g.bw : st[4], E = 210000;
+    const a = g.R - 0.5 * d0, c = a, rad = x => x * Math.PI / 180;
+    const FEk = F.FEk, FEd = g.gtot * FEk, Hs = FEd * g.pOut;
+    const VEd = FEd * Math.sin(rad(F.aV)), HEd = FEd * Math.cos(rad(F.aV)), Hx = HEd * Math.cos(rad(F.aH)), Hy = HEd * Math.sin(rad(F.aH)) + Hs;
+    const it = [];
+    const push = (key, label, ed, rd, unit) => it.push({key, label, ed, rd, unit, r: ed / rd});
+    // §3.13.1 geometria (tipo A)
+    push('a', 'Distanza bordo foro a (§3.13.1)', FEd * 1000 * g.gM0 / (2 * t * fy) + 2 * d0 / 3, a, 'mm');
+    push('c', 'Distanza bordo foro c (§3.13.1)', FEd * 1000 * g.gM0 / (2 * t * fy) + d0 / 3, c, 'mm');
+    // §3.13.2 rifollamento e pressione di contatto
+    push('fb', 'Rifollamento SLU (§3.13.2)', FEd, 1.5 * t * d * fy / g.gM0 / 1000, 'kN');
+    push('fbs', 'Rifollamento SLE (§3.13.2)', FEk, 0.6 * t * d * fy / g.gM6 / 1000, 'kN');
+    push('sh', 'Pressione di contatto (§3.13.2)', 0.591 * Math.sqrt(E * FEk * 1000 * (d0 - d) / (d * d * t)), 2.5 * fy / g.gM6, 'MPa');
+    // sezione 1-1: taglio
+    push('v11', 'Taglio sezione 1-1', FEd, 2 * t * a * (fy / Math.sqrt(3)) / g.gM0 / 1000, 'kN');
+    // sezione 2-2: Von Mises
+    const A = L * t, Wy = t * L * L / 6, Wx = L * t * t / 6, My = Hx * ev / 1000, Mx = Hy * ev / 1000;
+    const sig = VEd * 1000 / A + My * 1e6 / Wy + Mx * 1e6 / Wx, tau = Hx * 1000 / A + Hy * 1000 / A;
+    push('s22', 'Von Mises sezione 2-2', Math.sqrt(sig * sig + 3 * tau * tau), fy / g.gM0, 'MPa');
+    // giunto a doppio cianfrino a V (K) a piena penetrazione: resistenza pari a quella della parte più debole (§4.7.1)
+    if (g.prep === 'K') { const s22 = it[it.length - 1]; push('w', 'Saldatura piena penetrazione K (§4.7.1)', s22.ed, s22.rd, 'MPa');
+      return {fy, fu, bw, a, FEk, FEd, VEd, Hx, Hy, items: it, max: Math.max(...it.map(x => x.r))}; }
+    // saldature §4.5.3.3
+    const As = L * as * n, Wys = as * L * L * n / 6, Wxs = L * as * t / 2 * n, k = n * as;
+    const fn = (VEd * 1000 / As + My * 1e6 / Wys + Mx * 1e6 / Wxs) * k, ftx = Hx * 1000 / As * k, fty = Hy * 1000 / As * k;
+    push('w', 'Saldature (§4.5.3.3)', Math.hypot(fn, ftx, fty), fu / Math.sqrt(3) / (bw * g.gM2) * k, 'N/mm');
+    return {fy, fu, bw, a, FEk, FEd, VEd, Hx, Hy, items: it, max: Math.max(...it.map(x => x.r))};
+  }
+
+  // ------------------------------------------------------------------ DISEGNO D'OFFICINA DEL GOLFARE (piastra con foro, saldata a cordoni d'angolo)
+  /** g: geometria in mm {L, t, R, ev, d, d0, as, n, mat}; info: {name, project, count, ecMax, shackle} */
+  function buildLugShop(g, info = {}) {
+    const L = g.L, t = g.t, R = g.R, ev = g.ev, d0 = g.d0, H = ev + R, K = g.prep === 'K', root = Math.min(t, Math.max(0, g.root || 0)), bev = Math.min(80, Math.max(15, g.bev || 45));
+    const hK = K ? (t - root) / 2 * Math.tan(bev * Math.PI / 180) : 0, z = K ? 0 : g.as * Math.SQRT2;
+    const S = [1, 2, 2.5, 5, 10].find(s => (L + 90) / s <= 270 && (H + 60) / s <= 150 && (t + 2 * z + 60) / s <= 80) || 10, k = 1 / S;
+    const P = [];
+    const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.35});
+    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.3, layer: layer || 'TESTI', align: align || 'left'});
+    const Ci = (c, r, layer, w) => P.push({t: 'circle', c, r, layer: layer || 'CONTORNI', w: w || 0.35});
+    const Arc = (c, r, a0, a1, layer, w) => P.push({t: 'arc', c, r, a0, a1, layer: layer || 'CONTORNI', w: w || 0.35});
+    const rect = (x, y, w, h, layer, wt) => { Ln([x, y], [x + w, y], layer, wt); Ln([x + w, y], [x + w, y + h], layer, wt); Ln([x + w, y + h], [x, y + h], layer, wt); Ln([x, y + h], [x, y], layer, wt); };
+    const dash = (a, b, layer, w, on = 3, off = 1.5) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let s0 = 0; s0 < l; s0 += on + off) { const s1 = Math.min(l, s0 + on); Ln([a[0] + (b[0] - a[0]) * s0 / l, a[1] + (b[1] - a[1]) * s0 / l], [a[0] + (b[0] - a[0]) * s1 / l, a[1] + (b[1] - a[1]) * s1 / l], layer, w || 0.15); } };
+    const axis = (a, b) => dash(a, b, 'ASSI', 0.15, 6, 1.5);
+    const tick = (p, ang) => { const c = Math.cos(ang), s = Math.sin(ang), q = 1.2; Ln([p[0] - q * (c + s), p[1] - q * (s - c)], [p[0] + q * (c + s), p[1] + q * (s - c)], 'QUOTE', 0.25); };
+    const hd = (xa, xb, y, yref, txt) => { Ln([xa, yref], [xa, y - 1.5 * Math.sign(y - yref)], 'QUOTE', 0.15); Ln([xb, yref], [xb, y - 1.5 * Math.sign(y - yref)], 'QUOTE', 0.15); Ln([xa - 2, y], [xb + 2, y], 'QUOTE', 0.2); tick([xa, y], Math.PI / 4); tick([xb, y], Math.PI / 4); T([(xa + xb) / 2, y + 2], txt, 2.6, 'QUOTE', 'center'); };
+    const vd = (ya, yb, x, xref, txt) => { Ln([xref, ya], [x - 1.5 * Math.sign(x - xref), ya], 'QUOTE', 0.15); Ln([xref, yb], [x - 1.5 * Math.sign(x - xref), yb], 'QUOTE', 0.15); Ln([x, ya - 2], [x, yb + 2], 'QUOTE', 0.2); tick([x, ya], Math.PI / 4); tick([x, yb], Math.PI / 4); T([x - 1.5, (ya + yb) / 2], txt, 2.6, 'QUOTE', 'right'); };
+    rect(5, 5, 410, 287, 'CORNICE', 0.5);
+    // ---- prospetto
+    const RF = [12, 112, 290, 175]; rect(...RF, 'CORNICE', 0.18);
+    T([RF[0] + 3, RF[1] + RF[3] - 5], `PROSPETTO   1:${S}`, 2.8);
+    const ox = RF[0] + RF[2] / 2 + 10, oy = RF[1] + 30, m = (x, y) => [ox + x * k, oy + y * k];
+    const C = [0, ev];
+    // tangenti dagli spigoli di base alla circonferenza
+    const tang = s => { const Px = s * L / 2, dx = Px - C[0], dy = 0 - C[1], D = Math.hypot(dx, dy);
+      if (D <= R) { const yy = ev - Math.sqrt(Math.max(0, R * R - (L / 2) ** 2)); return {p: [Px, yy], a: Math.atan2(yy - ev, Px) * 180 / Math.PI}; }
+      const phi = Math.atan2(dy, dx), be = Math.acos(R / D), c1 = phi + be, c2 = phi - be;
+      const p1 = [C[0] + R * Math.cos(c1), C[1] + R * Math.sin(c1)], p2 = [C[0] + R * Math.cos(c2), C[1] + R * Math.sin(c2)];
+      const pick = s * p1[0] > s * p2[0] ? [p1, c1] : [p2, c2]; return {p: pick[0], a: pick[1] * 180 / Math.PI}; };
+    const tr = tang(1), tl = tang(-1);
+    Ln(m(-L / 2, 0), m(L / 2, 0), 'CONTORNI', 0.5); Ln(m(L / 2, 0), m(...tr.p), 'CONTORNI', 0.5); Ln(m(-L / 2, 0), m(...tl.p), 'CONTORNI', 0.5);
+    let a0 = tr.a, a1 = tl.a; while (a1 < a0) a1 += 360; Arc(m(...C), R * k, a0, a1, 'CONTORNI', 0.5);
+    Ci(m(...C), d0 / 2 * k, 'CONTORNI', 0.5);
+    axis(m(-R - 12, ev), m(R + 12, ev)); axis(m(0, -10), m(0, H + 12));
+    // saldature in prospetto (cordoni alla base)
+    if (K) { Ln(m(-L / 2, hK), m(L / 2, hK), 'CONTORNI', 0.3); T(m(L / 2 + 4, 3), 'K', 2.4, 'QUOTE'); }
+    else { Ln(m(-L / 2 - z, 0), m(L / 2 + z, 0), 'CONTORNI', 0.25); T(m(L / 2 + z + 4, 3), `a${nf(g.as, 0)}`, 2.4, 'QUOTE'); }
+    // quote
+    hd(m(-L / 2, 0)[0], m(L / 2, 0)[0], oy - 14, oy - 1, `L = ${nf(L, 0)}`);
+    vd(oy, m(0, ev)[1], m(-L / 2, 0)[0] - 10, m(-R, ev)[0] - 2, `ev = ${nf(ev, 0)}`);
+    vd(oy, m(0, H)[1], m(-L / 2, 0)[0] - 24, m(0, H)[0] - 2, `H = ${nf(H, 0)}`);
+    { const an = Math.PI / 4, pa = m(C[0] + R * Math.cos(an), C[1] + R * Math.sin(an)), pc = m(...C), pe = [pa[0] + 10, pa[1] + 10];
+      Ln(pc, pa, 'QUOTE', 0.2); Ln(pa, pe, 'QUOTE', 0.2); Ln(pe, [pe[0] + 14, pe[1]], 'QUOTE', 0.2); T([pe[0] + 1, pe[1] + 2], `R ${nf(R, 0)}`, 2.6, 'QUOTE'); }
+    { const an = -Math.PI * 0.8, pa = m(C[0] + d0 / 2 * Math.cos(an), C[1] + d0 / 2 * Math.sin(an)), pe = [pa[0] - 22, pa[1] - 8];
+      Ln(pa, pe, 'QUOTE', 0.2); Ln(pe, [pe[0] - 22, pe[1]], 'QUOTE', 0.2); T([pe[0] - 21, pe[1] + 2], `Ø ${nf(d0, 0)} foro`, 2.6, 'QUOTE'); }
+    // ---- dettaglio del cianfrino (in alto a sinistra nel riquadro del prospetto)
+    if (K) {
+      const box = [RF[0] + 4, RF[1] + RF[3] - 70, 84, 58], hh = hK + Math.max(12, t * 0.6);
+      const SD = [5, 4, 3, 2, 1, 0.5, 0.4, 0.25, 0.2].find(f => (t + 24) * f <= box[2] - 8 && (hh + 10) * f + 16 <= box[3] - 6) || 0.2;
+      const dx0 = box[0] + box[2] / 2, dy0 = box[1] + 12, dm = (x, y) => [dx0 + x * SD, dy0 + y * SD];
+      T([box[0] + 1, box[1] + box[3] - 2], `DETTAGLIO CIANFRINO   ${SD >= 1 ? SD + ':1' : '1:' + Math.round(1 / SD)}`, 2.4);
+      // piastra tagliata in alto (linea di interruzione a zig-zag)
+      Ln(dm(-t / 2, hh), dm(-t / 6, hh + 1.2), 'CONTORNI', 0.2); Ln(dm(-t / 6, hh + 1.2), dm(t / 6, hh - 1.2), 'CONTORNI', 0.2); Ln(dm(t / 6, hh - 1.2), dm(t / 2, hh), 'CONTORNI', 0.2);
+      [[-t / 2, hh], [-t / 2, hK], [-root / 2, 0]].reduce((a, q) => { Ln(dm(...a), dm(...q), 'CONTORNI', 0.5); return q; });
+      [[t / 2, hh], [t / 2, hK], [root / 2, 0]].reduce((a, q) => { Ln(dm(...a), dm(...q), 'CONTORNI', 0.5); return q; });
+      if (root > 0) Ln(dm(-root / 2, 0), dm(root / 2, 0), 'CONTORNI', 0.5);
+      Ln(dm(-t / 2 - 10, 0), dm(t / 2 + 10, 0), 'CONTORNI', 0.5); T(dm(t / 2 + 3, -4), 'piattabanda', 2.0);
+      dash(dm(-t / 2, hK), dm(-t / 2, 0), 'CONTORNI', 0.12, 1.5, 1); dash(dm(t / 2, hK), dm(t / 2, 0), 'CONTORNI', 0.12, 1.5, 1);
+      // quote: t, altezza del cianfrino, angolo, spalla
+      hd(dm(-t / 2, hh)[0], dm(t / 2, hh)[0], dm(0, hh)[1] + 7, dm(0, hh)[1] + 2, `t = ${nf(t, 0)}`);
+      vd(dm(0, 0)[1], dm(0, hK)[1], dm(-t / 2, 0)[0] - 7, dm(-t / 2, 0)[0] - 1, nf(hK, 1));
+      T([dm(t / 2, hK)[0] + 2, dm(t / 2, hK)[1] - 4], `${nf(bev, 0)}°`, 2.4, 'QUOTE');
+      { const a1 = dm(t / 2, hK), r1 = 6; Arc(dm(t / 2, hK), r1, 180 + bev, 270, 'QUOTE', 0.2); }
+      T([dx0, box[1] + 3], `c = ${nf(root, 0)} mm · piena penetrazione`, 2.0, 'QUOTE', 'center');
+    }
+    // ---- vista laterale
+    const RS = [304, 112, 104, 175]; rect(...RS, 'CORNICE', 0.18);
+    T([RS[0] + 3, RS[1] + RS[3] - 5], `VISTA LATERALE   1:${S}`, 2.8);
+    const sx = RS[0] + RS[2] / 2, sm = (x, y) => [sx + x * k, oy + y * k];
+    if (K) { const pts = [[-t / 2, H], [t / 2, H], [t / 2, hK], [root / 2, 0], [-root / 2, 0], [-t / 2, hK]]; pts.forEach((q, i) => { const r2 = pts[(i + 1) % pts.length]; if (!(i === 3 && root === 0)) Ln(sm(...q), sm(...r2), 'CONTORNI', 0.5); }); }
+    else rect(sm(-t / 2, 0)[0], oy, t * k, H * k, 'CONTORNI', 0.5);
+    dash(sm(-t / 2, ev - d0 / 2), sm(t / 2, ev - d0 / 2), 'CONTORNI', 0.2); dash(sm(-t / 2, ev + d0 / 2), sm(t / 2, ev + d0 / 2), 'CONTORNI', 0.2);
+    axis(sm(-t / 2 - 8, ev), sm(t / 2 + 8, ev)); axis(sm(0, -8), sm(0, H + 10));
+    Ln(sm(-t / 2 - z - 25, 0), sm(t / 2 + z + 25, 0), 'CONTORNI', 0.35); T(sm(t / 2 + z + 2, -10), 'piattabanda', 2.0, 'TESTI');
+    if (K) [-1, 1].forEach(s => { // cianfrino riempito, con raccordo di sovrametallo
+      const a = sm(s * t / 2, hK), b = sm(s * root / 2, 0), c = sm(s * (t / 2 + hK * 0.35), 0); Ln(a, c, 'CONTORNI', 0.35);
+      for (let f = 0.15; f < 1; f += 0.15) { const y = hK * f, x0 = root / 2 + (t - root) / 2 * f, x1 = t / 2 + hK * 0.35 * (1 - f); Ln(sm(s * x0, y), sm(s * x1, y), 'CONTORNI', 0.1); } });
+    else [-1, 1].forEach(s => { if (g.n < 2 && s < 0) return; const a = sm(s * t / 2, z), b = sm(s * (t / 2 + z), 0), c = sm(s * t / 2, 0); Ln(a, b, 'CONTORNI', 0.35); Ln(b, c, 'CONTORNI', 0.35); Ln(c, a, 'CONTORNI', 0.35); });
+    hd(sm(-t / 2, 0)[0], sm(t / 2, 0)[0], m(0, H)[1] + 8, m(0, H)[1] + 1, `t = ${nf(t, 0)}`);
+    if (K) { const p = sm(t / 2, hK * 0.5), e = [p[0] + 12, p[1] + 16]; Ln(p, e, 'QUOTE', 0.2); Ln(e, [e[0] + 30, e[1]], 'QUOTE', 0.2); T([e[0] + 1, e[1] + 2], `K  ${nf(bev, 0)}°  c ${nf(root, 0)}`, 2.4, 'QUOTE'); T([e[0] + 1, e[1] - 3.5], 'piena penetrazione', 2.0, 'QUOTE');
+      vd(oy, sm(0, hK)[1], sm(-t / 2, 0)[0] - 8, sm(-t / 2, 0)[0] - 1, nf(hK, 0)); }
+    else { const p = sm(t / 2 + z * 0.4, z * 0.4), e = [p[0] + 12, p[1] + 14]; Ln(p, e, 'QUOTE', 0.2); Ln(e, [e[0] + 18, e[1]], 'QUOTE', 0.2); T([e[0] + 1, e[1] + 2], `a = ${nf(g.as, 0)}${g.n >= 2 ? '  2 lati' : ''}`, 2.4, 'QUOTE'); }
+    // ---- pianta
+    const RP = [12, 50, 290, 60]; rect(...RP, 'CORNICE', 0.18);
+    T([RP[0] + 3, RP[1] + RP[3] - 5], `PIANTA   1:${S}`, 2.8);
+    const py = RP[1] + RP[3] / 2 - 4, pm = (x, y) => [ox + x * k, py + y * k];
+    rect(pm(-L / 2, -t / 2)[0], pm(0, -t / 2)[1], L * k, t * k, 'CONTORNI', 0.5);
+    if (!K) [-1, 1].forEach(s => { if (g.n < 2 && s < 0) return; Ln(pm(-L / 2, s * (t / 2 + z)), pm(L / 2, s * (t / 2 + z)), 'CONTORNI', 0.25); for (let x = -L / 2; x <= L / 2 + 0.1; x += Math.max(4 * S, L / 40)) Ln(pm(x, s * t / 2), pm(x, s * (t / 2 + z)), 'CONTORNI', 0.12); });
+    axis(pm(-L / 2 - 10, 0), pm(L / 2 + 10, 0)); axis(pm(0, -t / 2 - 10), pm(0, t / 2 + 10));
+    dash(pm(-d0 / 2, -t / 2), pm(-d0 / 2, t / 2), 'CONTORNI', 0.2); dash(pm(d0 / 2, -t / 2), pm(d0 / 2, t / 2), 'CONTORNI', 0.2);
+    // ---- note
+    const RN = [304, 50, 104, 60]; rect(...RN, 'CORNICE', 0.18);
+    let ny = RN[1] + RN[3] - 6; const note = (txt, sz) => { T([RN[0] + 3, ny], txt, sz || 2.1); ny -= (sz || 2.1) * 1.3 + 2; };
+    note('NOTE', 2.6);
+    note(`Materiale: acciaio ${g.mat}, lamiera sp. ${nf(t, 0)} mm`);
+    note(`Foro Ø ${nf(d0, 0)} mm per perno Ø ${nf(g.d, 0)} mm${info.shackle ? ' (' + info.shackle + ')' : ''}`);
+    if (K) { note(`Doppio cianfrino a V (K): angolo ${nf(bev, 0)}°, spalla c = ${nf(root, 0)} mm,`); note(`altezza cianfrino ${nf(hK, 1)} mm; saldatura a piena penetrazione`); }
+    else { note(`Saldatura a cordone d'angolo a = ${nf(g.as, 0)} mm,`); note(`${g.n >= 2 ? 'sui due lati' : 'su un lato'}, per tutta la lunghezza L`); }
+    if (info.count) note(`Quantità: ${info.count} pezzi`);
+    if (info.ecMax != null) note(`Verifica EN 1993-1-8: rapporto max ${nf(info.ecMax, 2)} ${info.ecMax <= 1 ? '(OK)' : '(NON VERIFICATO)'}`);
+    note('Quote in mm');
+    // ---- cartiglio
+    const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
+    T([14, ty + th - 6], 'GOLFARE DI SOLLEVAMENTO – DISEGNO D\'OFFICINA', 3.4);
+    T([14, ty + th - 13], `${info.name || ''}`, 2.6);
+    T([14, ty + th - 20], `Piastra ${nf(L, 0)} × ${nf(H, 0)} × ${nf(t, 0)} mm · ${g.mat} · foro Ø ${nf(d0, 0)} · scala 1:${S} su A3`, 2.3);
+    T([14, ty + th - 27], `Calcolo: EN 1993-1-8 §3.13, ${K ? '§4.7.1 (piena penetrazione)' : '§4.5.3.3'}`, 2.0);
+    T([252, ty + th - 6], info.project || '', 2.6); T([252, ty + th - 12], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.2);
+    T([252, ty + 3], 'Peso e baricentro · Golfari · Trimble Connect', 1.8);
+    P.push({t: 'image', p: [366, ty + th - 16], w: 40, h: 40 * LOGO.h / LOGO.w, data: LOGO.data});
+    return {prims: P, scale: S};
+  }
+
+  // ------------------------------------------------------------------ DISEGNO DI POSIZIONAMENTO DEI GOLFARI (pianta + sezioni)
+  /**
+   * d = {meshes (rel. ref, solo il corpo di riferimento), ref, ax, cog (ass.), lugs:[{n, x, y, z, gv, gw}] (gv/gw: asse e larghezza piattabanda, m, nel riferimento di ax),
+   *      refLabel, name, project, geo:{L, t, ev, R} (mm)}
+   */
+  function buildLugLayout(d) {
+    const ax = d.ax, pv = [-ax[1], ax[0]], c0 = d.cog;
+    const toL = (x, y, z) => { const dx = x - c0[0], dy = y - c0[1]; return [dx * ax[0] + dy * ax[1], dx * pv[0] + dy * pv[1], z - c0[2]]; };
+    const local = d.meshes.filter(m => !isMinute(m)).map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s = toL(m.pos[i] + d.ref[0], m.pos[i + 1] + d.ref[1], m.pos[i + 2] + d.ref[2]); q[i] = s[0]; q[i + 1] = s[1]; q[i + 2] = s[2]; } return {pos: q, idx: m.idx}; });
+    let U0 = Infinity, U1 = -Infinity; local.forEach(m => { for (let i = 0; i < m.pos.length; i += 3) { if (m.pos[i] < U0) U0 = m.pos[i]; if (m.pos[i] > U1) U1 = m.pos[i]; } });
+    const g = d.geo, Lp = g.L / 1000, tp = g.t / 1000, Hp = (g.ev + g.R) / 1000;
+    const lugs = d.lugs.map(l => ({...l, L: toL(l.x, l.y, l.z)})).sort((a, b) => a.L[0] - b.L[0]);
+    // bordi reali della piattabanda sotto ogni golfare: dal taglio della geometria alla progressiva del golfare
+    lugs.forEach(l => { let lo = Infinity, hi = -Infinity;
+      local.forEach(m => cutLines(m, 0, l.L[0] - 0.12).forEach(sg => sg.forEach(q => { if (Math.abs(q[2] - l.L[2]) < 0.08 && Math.abs(q[1] - l.gv) < l.gw / 2 + 0.25) { lo = Math.min(lo, q[1]); hi = Math.max(hi, q[1]); } })));
+      if (isFinite(lo) && hi - lo > 0.1 && l.L[1] > lo && l.L[1] < hi) { l.gw = hi - lo; l.gv = (hi + lo) / 2; l.web = l.web ?? null; } });
+    const P = [];
+    const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.25});
+    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.4, layer: layer || 'TESTI', align: align || 'left'});
+    const rect = (x, y, w, h, layer, wt) => { Ln([x, y], [x + w, y], layer, wt); Ln([x + w, y], [x + w, y + h], layer, wt); Ln([x + w, y + h], [x, y + h], layer, wt); Ln([x, y + h], [x, y], layer, wt); };
+    const dashed = (a, b, layer) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.floor(L / 4)); for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 0.6) / n; Ln([a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1], layer || 'ASSI', 0.13); } };
+    const tick = p => Ln([p[0] - 1, p[1] - 1], [p[0] + 1, p[1] + 1], 'QUOTE', 0.3);
+    const hd = (xa, xb, y, txt, ya, yb) => { if (ya != null) Ln([xa, ya], [xa, y - 1], 'QUOTE', 0.12); if (yb != null) Ln([xb, yb], [xb, y - 1], 'QUOTE', 0.12); Ln([xa - 1.5, y], [xb + 1.5, y], 'QUOTE', 0.18); tick([xa, y]); tick([xb, y]); T([(xa + xb) / 2, y + 1.4], txt, 2.0, 'QUOTE', 'center'); };
+    const vd = (ya, yb, x, txt, left) => { Ln([x, ya - 1.5], [x, yb + 1.5], 'QUOTE', 0.18); tick([x, ya]); tick([x, yb]); T([x + (left ? -1.2 : 1.2), (ya + yb) / 2], txt, 2.0, 'QUOTE', left ? 'right' : 'left'); };
+    const mm = v => nf(Math.abs(v) * 1000, 0);
+    const pick = x => SCALES.find(s => s >= x) || 5000;
+    rect(5, 5, 410, 287, 'CORNICE', 0.5);
+    // ---- pianta
+    const RP = [12, 150, 396, 137]; rect(...RP, 'CORNICE', 0.18);
+    const PLAN = {f: [0, 0, -1], up: [0, 1, 0]};
+    const h0 = hiddenLine(local, local.map(m => contourEdges(edgeNormals(m), norm(PLAN.f))), PLAN, 1600), HP = {...h0, segs: dropShort(h0.segs, 0.3, 0.01)};
+    // quote longitudinali: golfari quasi alla stessa progressiva su una sola riga
+    const rowsU = []; lugs.forEach(l => { const r = rowsU.find(q => Math.abs(q.u - l.L[0]) < 0.6); if (r) r.ls.push(l); else rowsU.push({u: l.L[0], ls: [l]}); });
+    const nr = rowsU.length + 1;
+    const SP = pick(Math.max((HP.umax - HP.umin) / (RP[2] - 40), (HP.vmax - HP.vmin) / (RP[3] - 36 - nr * 7)) * 1000), k2 = 1000 / SP;
+    const cu = (HP.umin + HP.umax) / 2, cv = (HP.vmin + HP.vmax) / 2, ox = RP[0] + RP[2] / 2, oy = RP[1] + RP[3] / 2 + 2 + nr * 3.5;
+    const map = (u, v) => [ox + (u - cu) * k2, oy + (v - cv) * k2], pm = p => { const q = HP.prj(p[0], p[1], p[2]); return map(q[0], q[1]); };
+    HP.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), 'CONTORNI', 0.3));
+    T([RP[0] + 3, RP[1] + RP[3] - 5], `PIANTA – posizione dei golfari   1:${SP}`, 2.6);
+    T([RP[0] + 3, RP[1] + RP[3] - 11], `Riferimento: ${d.refLabel}`, 2.0);
+    // riferimento: estremità iniziale
+    const r0 = pm([U0, 0, 0]), yTop = map(0, HP.vmax)[1], yBot = map(0, HP.vmin)[1];
+    Ln([r0[0], yTop + 4], [r0[0], yBot - 6 - (nr - 1) * 7], 'SEZIONI', 0.35); T([r0[0] - 1.5, yTop + 6], 'RIF. 0', 2.2, 'SEZIONI', 'right');
+    // golfari: impronta della piastra lungo l'asse e quote progressive dal riferimento
+    lugs.forEach((l, i) => {
+      const a = pm([l.L[0] - Lp / 2, l.L[1] - tp / 2, 0]), b = pm([l.L[0] + Lp / 2, l.L[1] + tp / 2, 0]), w = Math.max(1.2, b[0] - a[0]), hh = Math.max(0.8, Math.abs(b[1] - a[1]));
+      const c = pm(l.L); rect(c[0] - w / 2, c[1] - hh / 2, w, hh, 'GOLFARI', 0.5);
+      T([c[0] + 1.5, c[1] + (l.L[1] > 0 ? 3 : -4.5)], 'G' + l.n, 2.2, 'GOLFARI');
+      // distanza trasversale dal bordo della piattabanda
+      const eOut = l.gv + Math.sign(l.L[1] - l.gv || 1) * l.gw / 2, side = Math.sign(l.L[1]) || 1, edge = l.L[1] > l.gv ? l.gv + l.gw / 2 : l.gv - l.gw / 2;
+      T([c[0] + 1.5, c[1] + (l.L[1] > 0 ? 7 : -8.5)], `${mm(l.L[1] - (l.gv - l.gw / 2))} / ${mm(l.gv + l.gw / 2 - l.L[1])} dai bordi`, 1.8, 'QUOTE');
+    });
+    rowsU.forEach((rw, i) => { const x = pm([rw.u, 0, 0])[0], yq = yBot - 6 - i * 7; hd(r0[0], x, yq, rw.ls.map(l => mm(l.L[0] - U0) + (rw.ls.length > 1 ? ' (G' + l.n + ')' : '')).join(' / '), null, null);
+      rw.ls.forEach(l => Ln([pm(l.L)[0], pm(l.L)[1]], [pm(l.L)[0], yq], 'QUOTE', 0.12)); });
+    hd(r0[0], pm([U1, 0, 0])[0], yBot - 6 - rowsU.length * 7, `L = ${mm(U1 - U0)}`, null, null);
+    // ---- sezioni trasversali sui golfari
+    const nS = lugs.length, W = 396 / Math.max(1, nS);
+    [...lugs].sort((a, b) => a.n - b.n).forEach((l, i) => {
+      const r = [12 + W * i, 50, W - 2, 98]; rect(...r, 'CORNICE', 0.18);
+      const at = l.L[0] - 0.12, view = {f: [1, 0, 0], up: [0, 0, 1]}, half = l.gw / 2 + 0.5;
+      const lat = [[1, 1, l.gv - half], [1, -1, l.gv + half], [2, 1, l.L[2] - 0.8]]; // solo la parte alta della trave
+      const latM = local.map(m => clipMesh(m, lat)), cuts = []; latM.forEach(m => cutLines(m, 0, at).forEach(c => cuts.push(c)));
+      const pl = [...lat, [0, 1, at + 1e-4], [0, -1, at + 0.5]], beyond = local.map(m => clipMesh(m, pl)).filter(m => m.idx.length);
+      const onClip = q => pl.some(([a, , v]) => Math.abs(q[a] - v) < 1e-5);
+      const edges = beyond.map(m => contourEdges(edgeNormals(m), norm(view.f)).filter(e => !(onClip([e[0], e[1], e[2]]) && onClip([e[3], e[4], e[5]]))));
+      const cm = {pos: new Float64Array(cuts.flat(2)), idx: new Uint32Array(0)};
+      const hs = hiddenLine((beyond.length ? beyond : []).concat([cm]), edges, view, 1200), segs = dropShort(hs.segs, 0.03, 0.003);
+      const cutS = cuts.map(c => { const a = hs.prj(...c[0]), b = hs.prj(...c[1]); return [a[0], a[1], b[0], b[1]]; });
+      let u0 = hs.umin, u1 = hs.umax, v0 = hs.vmin, v1 = Math.max(hs.vmax, hs.prj(l.L[0], l.L[1], l.L[2] + Hp)[1]);
+      const S = pick(Math.max((u1 - u0) / (r[2] - 30), (v1 - v0) / (r[3] - 40)) * 1000), k = 1000 / S;
+      const ccu = (u0 + u1) / 2, ccv = (v0 + v1) / 2, sx = r[0] + r[2] / 2, sy = r[1] + r[3] / 2 - 4;
+      const mp = (u, v) => [sx + (u - ccu) * k, sy + (v - ccv) * k], sp = p => { const q = hs.prj(p[0], p[1], p[2]); return mp(q[0], q[1]); };
+      segs.forEach(sg => Ln(mp(sg[0], sg[1]), mp(sg[2], sg[3]), 'CONTORNI', 0.25));
+      cutS.forEach(sg => Ln(mp(sg[0], sg[1]), mp(sg[2], sg[3]), 'TAGLIO', 0.6));
+      T([r[0] + 2, r[1] + r[3] - 5], `SEZIONE G${l.n}   1:${S}`, 2.4);
+      // golfare visto di taglio (spessore t, altezza H) sulla piattabanda
+      const gb = sp([l.L[0], l.L[1] - tp / 2, l.L[2]]), gt = sp([l.L[0], l.L[1] + tp / 2, l.L[2] + Hp]);
+      rect(Math.min(gb[0], gt[0]), gb[1], Math.max(0.8, Math.abs(gt[0] - gb[0])), gt[1] - gb[1], 'GOLFARI', 0.5);
+      const ca = sp([l.L[0], l.L[1], l.L[2]]); dashed([ca[0], ca[1] + (gt[1] - gb[1]) + 4], [ca[0], ca[1] - 14], 'ASSI');
+      // quote: dai bordi della piattabanda all'asse del golfare; asse anima; altezza del golfare
+      const eL = sp([l.L[0], l.gv - l.gw / 2, l.L[2]]), eR = sp([l.L[0], l.gv + l.gw / 2, l.L[2]]), yq = gt[1] + 6;
+      const xs = [eL[0], ca[0], eR[0]].sort((a, b) => a - b);
+      hd(xs[0], xs[1], yq, mm(Math.abs(l.L[1] - (xs[0] === eL[0] ? l.gv - l.gw / 2 : l.gv + l.gw / 2))), eL[1] + 1, ca[1] + 1);
+      hd(xs[1], xs[2], yq, mm(Math.abs((xs[2] === eR[0] ? l.gv + l.gw / 2 : l.gv - l.gw / 2) - l.L[1])), ca[1] + 1, eR[1] + 1);
+      hd(xs[0], xs[2], yq + 6, `piattabanda ${mm(l.gw)}`, null, null);
+      const wa = sp([l.L[0], l.gv, l.L[2]]), off = l.L[1] - l.gv;
+      T([ca[0], r[1] + 5], Math.abs(off) < 0.005 ? 'golfare in asse alla piattabanda' : `asse golfare a ${mm(off)} mm dall'asse della piattabanda`, 1.8, 'QUOTE', 'center');
+      vd(gb[1], gt[1], Math.max(gb[0], gt[0]) + 4, `H ${nf(g.ev + g.R, 0)}`);
+    });
+    // cartiglio
+    const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
+    T([14, ty + th - 6], `POSIZIONAMENTO GOLFARI – ${d.name}`, 3.0);
+    T([14, ty + th - 13], `Riferimento: ${d.refLabel} · golfari ${lugs.map(l => 'G' + l.n).join(', ')}`, 2.0);
+    T([14, ty + th - 19], `Piastra ${nf(g.L, 0)} × ${nf(g.ev + g.R, 0)} × ${nf(g.t, 0)} mm, disposta lungo l'asse della trave`, 1.9);
+    T([14, ty + th - 25], 'Quote in mm. Distanze longitudinali dal RIF. 0 (estremità iniziale), misurate lungo l\'asse del concio.', 1.8);
+    T([252, ty + th - 6], d.project || '', 2.4); T([252, ty + th - 12], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.0);
+    T([252, ty + 3], 'Peso e baricentro · Golfari · Trimble Connect', 1.6);
+    P.push({t: 'image', p: [366, ty + th - 16], w: 40, h: 40 * LOGO.h / LOGO.w, data: LOGO.data});
+    return {prims: P, scale: SP};
   }
 
   // ------------------------------------------------------------------ TAVOLA "SAGOMA": pianta + 4 sezioni sotto i golfari
@@ -1037,6 +1290,6 @@
     return {prism, tube, box, lug, oct};
   }
 
-  const API = {silhouette, insertIntoIfc, buildLugSheet, lugIfc, liftModel, placeLugs, slingForces, IFC, toDxfMulti, initIfc, openIfc, meshOf, leaves, volCentroid, bboxOf, buildSheet, toPdf, toDxf, featureEdges, hiddenLine};
+  const API = {buildLugLayout, buildLugShop, lugCheck, STEELS, LUG_GEO_DEFAULT, silhouette, insertIntoIfc, buildLugSheet, lugIfc, liftModel, placeLugs, slingForces, IFC, toDxfMulti, initIfc, openIfc, meshOf, leaves, volCentroid, bboxOf, buildSheet, toPdf, toDxf, featureEdges, hiddenLine};
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PBDraw = API;
 })(typeof window !== 'undefined' ? window : globalThis);
