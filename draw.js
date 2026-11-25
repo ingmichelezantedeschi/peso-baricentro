@@ -172,6 +172,15 @@
   // ------------------------------------------------------------------ tavola
   const SCALES = [1, 2, 5, 10, 20, 25, 50, 75, 100, 125, 150, 200, 250, 500, 750, 1000, 1500, 2000, 2500, 5000];
   const nf = (v, d) => v.toLocaleString('it-IT', {minimumFractionDigits: d, maximumFractionDigits: d});
+  const LOGO = {data: 'data:image/png;base64,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', w: 242, h: 78};
+  /** quota relativa in m con segno: ±0,00 / +1,23 / −0,45 */
+  const lvl = v => Math.abs(v) < 0.005 ? '±0,00' : (v > 0 ? '+' : '−') + nf(Math.abs(v), 2);
+  /** ±0,00 delle tavole di sollevamento: intradosso della piattabanda inferiore in corrispondenza del baricentro (coord. locali, z dal COG) */
+  function zeroLevel(local) {
+    let z0 = Infinity, zAll = Infinity;
+    for (const m of local) for (let i = 0; i < m.pos.length; i += 3) { const z = m.pos[i + 2]; if (z < zAll) zAll = z; if (Math.abs(m.pos[i]) < 1.0 && z < z0) z0 = z; }
+    return isFinite(z0) ? z0 : zAll;
+  }
 
   /**
    * d = {meshes:[{pos,idx,bolt}] (coord. viewer, metri, relative a ref), ref:[x,y,z], cog:[x,y,z] assoluto,
@@ -207,7 +216,7 @@
     const S = SCALES.find(s => s >= needMax) || Math.ceil(needMax);
     const P = []; // primitive
     const L = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.25});
-    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: size || 2.5, layer: layer || 'TESTI', align: align || 'left'});
+    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.25, layer: layer || 'TESTI', align: align || 'left'});
     const C = (c, r, layer) => P.push({t: 'circle', c, r, layer: layer || 'BARICENTRO'});
     const SEC = (c, r, a0, a1, layer) => P.push({t: 'sector', c, r, a0, a1, layer: layer || 'BARICENTRO'});
     const rect = (x, y, w, h, layer, wt) => { L([x, y], [x + w, y], layer, wt); L([x + w, y], [x + w, y + h], layer, wt); L([x + w, y + h], [x, y + h], layer, wt); L([x, y + h], [x, y], layer, wt); };
@@ -262,15 +271,16 @@
       ['COG nel gruppo', `X ${nf(cg[0], 3)}   Y ${nf(cg[1], 3)}   Z ${nf(cg[2], 3)} m`],
       ['COG nel modello', `X ${nf(ca[0], 3)}   Y ${nf(ca[1], 3)}   Z ${nf(ca[2], 3)} m`],
       ['Origine gruppo', `X ${nf(d.origin.x, 3)}  Y ${nf(d.origin.y, 3)}  Z ${nf(d.origin.z, 3)}  rot. ${nf(d.rot || 0, 2)}°`]];
-    lines.forEach((l, i) => { T([14, ty + th - 4 - i * 4.5], l[0], 2.3, 'TESTI'); T([46, ty + th - 4 - i * 4.5], l[1], 2.5, 'TESTI'); });
+    lines.forEach((l, i) => { T([14, ty + th - 4 - i * 4.9], l[0], 2.2, 'TESTI'); T([50, ty + th - 4 - i * 4.9], l[1], 2.3, 'TESTI'); });
     T([214, ty + th - 5], 'ELEMENTI', 2.2, 'TESTI');
-    const marks = (d.marks || []).join(', '); const mlines = wrap(marks, 58).slice(0, 6);
+    const marks = (d.marks || []).join(', '); const mlines = wrap(marks, 46).slice(0, 6);
     mlines.forEach((l, i) => T([214, ty + th - 10 - i * 4.2], l, 2.2, 'TESTI'));
     T([324, ty + th - 5], d.project || '', 2.6, 'TESTI'); T([324, ty + th - 10], d.model || '', 2.2, 'TESTI');
     T([324, ty + th - 16], `Gruppo: ${d.group || ''}`, 2.4, 'TESTI');
     T([324, ty + th - 22], `Viste 2D in scala 1:${S} su A3`, 2.4, 'TESTI'); T([324, ty + th - 27], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.2, 'TESTI');
-    T([324, ty + 3], 'Peso e baricentro · Trimble Connect', 2.0, 'TESTI');
-    T([214, ty + 2], 'Quote in mm. COG sui volumi reali dei pezzi, pesati col peso del modello.', 1.8, 'TESTI');
+    P.push({t: 'image', p: [379, ty + 1.5], w: 27, h: 27 * LOGO.h / LOGO.w, data: LOGO.data});
+    T([324, ty + 3], 'Peso e baricentro · Trimble Connect', 1.8, 'TESTI');
+    T([214, ty + 2], 'Quote in mm. COG sui volumi reali dei pezzi.', 1.8, 'TESTI');
     return {prims: P, scale: S, cogLocal: cogL};
   }
   function wrap(s, n) { const out = []; let cur = ''; s.split(', ').forEach(w => { if ((cur + ', ' + w).length > n && cur) { out.push(cur + ','); cur = w; } else cur = cur ? cur + ', ' + w : w; }); if (cur) out.push(cur); return out; }
@@ -289,9 +299,10 @@
         for (let a = p.a0; a <= p.a1 + 0.01; a += 10) pts.push([p.c[0] + p.r * Math.cos(a * Math.PI / 180), Y(p.c[1] + p.r * Math.sin(a * Math.PI / 180))]);
         const lines = []; for (let i = 1; i < pts.length; i++) lines.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
         doc.lines(lines, pts[0][0], pts[0][1], [1, 1], 'F', true);
+      } else if (p.t === 'image') { try { doc.addImage(p.data, 'PNG', p.p[0], Y(p.p[1] + p.h), p.w, p.h); } catch (e) {}
       } else if (p.t === 'tbox') { // sfondo bianco sotto un testo (allineato a sinistra)
         doc.setFontSize(p.s / 0.3528); const w = doc.getTextWidth(p.txt), pd = p.s * 0.35;
-        doc.setFillColor(255, 255, 255); doc.setDrawColor(...c); doc.setLineWidth(0.2); doc.rect(p.p[0] - pd, Y(p.p[1]) - p.s * 0.6 - pd * 0.5, w + 2 * pd, p.s * 1.2 + pd, 'FD');
+        const x0 = p.align === 'right' ? p.p[0] - w : p.align === 'center' ? p.p[0] - w / 2 : p.p[0]; doc.setFillColor(255, 255, 255); doc.setDrawColor(...c); doc.setLineWidth(0.2); doc.rect(x0 - pd, Y(p.p[1]) - p.s * 0.6 - pd * 0.5, w + 2 * pd, p.s * 1.2 + pd, 'FD');
       } else if (p.t === 'text') { doc.setTextColor(...c); doc.setFontSize(p.s / 0.3528); doc.text(p.txt, p.a ? p.a[0] : p.p[0], Y(p.p[1]), {align: p.align, baseline: 'middle'}); }
     }
   }
@@ -640,6 +651,7 @@
     const toL = (x, y, z) => { const dx = x - c0[0], dy = y - c0[1]; return [dx * ax[0] + dy * ax[1], dx * pv[0] + dy * pv[1], z - c0[2]]; };
     const local = d.meshes.filter(m => !isMinute(m)).map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s = toL(m.pos[i] + d.ref[0], m.pos[i + 1] + d.ref[1], m.pos[i + 2] + d.ref[2]); q[i] = s[0]; q[i + 1] = s[1]; q[i + 2] = s[2]; } return {pos: q, idx: m.idx}; });
     const lugs = d.lugs.map((l, i) => ({...l, n: i + 1, L: toL(l.x, l.y, l.z)})), hook = toL(d.hook[0], d.hook[1], d.hook[2]);
+    const z0 = zeroLevel(local), zr = z => z - z0; // quote relative al ±0,00
     const groupBy = (vals, tol) => { const o = []; [...vals].sort((a, b) => a.v - b.v).forEach(x => { const l = o[o.length - 1]; if (l && x.v - l[l.length - 1].v < tol) l.push(x); else o.push([x]); }); return o; };
     // pianta (come prima)
     const PLAN = {f: [0, 0, -1], up: [0, 1, 0]};
@@ -683,7 +695,7 @@
     const SL = pick(Math.max(0, ...secs.filter(x => x.kind === 'L').map(sc => need(sc.e, sc.r))));
     const P = [];
     const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: Math.max(0.18, (w || 0.25) * 1.5)});
-    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.3, layer: layer || 'TESTI', align: align || 'left'});
+    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.5, layer: layer || 'TESTI', align: align || 'left'});
     const C = (c, r, layer, w) => P.push({t: 'circle', c, r, layer: layer || 'BARICENTRO', w: w || 0.35});
     const SEC = (c, r, a0, a1, layer) => P.push({t: 'sector', c, r, a0, a1, layer: layer || 'BARICENTRO'});
     const rect = (x, y, w, h, layer, wt) => { Ln([x, y], [x + w, y], layer, wt); Ln([x + w, y], [x + w, y + h], layer, wt); Ln([x + w, y + h], [x, y + h], layer, wt); Ln([x, y + h], [x, y], layer, wt); };
@@ -723,6 +735,10 @@
       T([r[0] + 2, r[1] + r[3] - 4], `SEZIONE ${sc.n}-${sc.n}   1:${S}`, 2.8);
       const cp = pm([sc.kind === 'T' ? sc.at : 0, sc.kind === 'T' ? 0 : sc.at, 0]);
       dashed([cp[0], r[1] + 3], [cp[0], r[1] + r[3] - 7]); T([cp[0] + 1, r[1] + 4], 'asse baricentro', 1.7, 'ASSI');
+      { const y0 = pm([0, 0, z0])[1], xl = map(sc.h.umin, 0)[0] - 3, xr = Math.min(map(sc.h.umax, 0)[0] + 3, r[0] + r[2] - 24);
+        Ln([xl, y0], [xr + 12, y0], 'QUOTE', 0.25); Ln([xr + 5, y0], [xr + 3.3, y0 + 3], 'QUOTE', 0.25); Ln([xr + 5, y0], [xr + 6.7, y0 + 3], 'QUOTE', 0.25); Ln([xr + 3.3, y0 + 3], [xr + 6.7, y0 + 3], 'QUOTE', 0.25);
+        T([xr + 8, y0 + 3.4], '±0,00', 2.3, 'QUOTE');
+        const yc = pm([0, 0, 0])[1]; cogSym([cp[0], yc], 1.6); { const tp = [cp[0] + 2.8, yc - 3.4], tx = `COG ${lvl(zr(0))}`; P.push({t: 'tbox', p: tp, txt: tx, s: 2.0 * 1.5, layer: 'BARICENTRO'}); T(tp, tx, 2.0, 'BARICENTRO'); } }
       let yTop = -Infinity;
       sc.lugs.forEach(l => {
         const lp = pm(l.L), a = (sc.kind === 'T' ? 0.08 : 0.275) * k2, hh = 0.3 * k2;
@@ -731,6 +747,7 @@
         const tp = [lp[0], lp[1] + hh], hq = pm(hook), dx = hq[0] - tp[0], dy = hq[1] - tp[1], dl = Math.hypot(dx, dy) || 1, len = 12;
         const ep = [tp[0] + dx / dl * len, tp[1] + dy / dl * len]; Ln(tp, ep, 'FUNI', 0.45);
         T([ep[0] + (dx < 0 ? -1 : 1), ep[1] + 1], 'F' + l.n, 2.2, 'FUNI', dx < 0 ? 'right' : 'left');
+        T([lp[0] + (dx < 0 ? a + 1.5 : -a - 1.5), lp[1] + hh + 2.2], lvl(zr(l.L[2])), 1.9, 'QUOTE', dx < 0 ? 'left' : 'right');
         yTop = Math.max(yTop, ep[1]);
       });
       // quote dei golfari dall'asse del baricentro
@@ -740,19 +757,22 @@
     // tabella
     const t = R.tab, x0 = t[0] + 2; let y = t[1] + t[3] - 5;
     T([x0, y], 'GOLFARI E FUNI', 2.8); y -= 5.5;
-    const cols = [0, 9, 20, 34, 46, 58, 76];
+    const cols = [0, 10, 21, 35, 48, 62, 78];
     ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Golfare / grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
     lugs.forEach(l => { const row = ['F' + l.n, l.g || '', nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
-      row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 2.8], (l.shackle || ''), 1.7); y -= 7; });
+      row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 3.4], (l.shackle || ''), 1.7); y -= 8.5; });
     y -= 1; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.fd && d.fd !== 1 ? ' (coeff. dinamico ' + nf(d.fd, 2) + ' incluso)' : ''}`, 2.2); y -= 4.5;
-    T([x0, y], `Gancio sopra il baricentro, quota ${nf(d.hook[2], 2)} m`, 2.0); y -= 4;
+    T([x0, y], `Gancio sopra il baricentro, quota ${lvl(zr(hook[2]))} m`, 2.0); y -= 4.5;
+    T([x0, y], `COG a quota ${lvl(zr(0))} m · golfari a ${[...new Set(lugs.map(l => lvl(zr(l.L[2]))))].join(' / ')} m`, 2.0); y -= 4.5;
     T([x0, y], 'Ripartizione statica dei carichi: valori da verificare.', 1.8);
     // cartiglio
     const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
     T([14, ty + th - 6], `SCHEMA DI SOLLEVAMENTO CON GRU SINGOLA – ${d.name}`, 3.4);
     T([14, ty + th - 13], `Peso ${nf(d.weight, 2)} t · ${lugs.length} golfari · pianta 1:${SP}, sezioni 1:${ST}${nL ? ' / 1:' + SL : ''} su A3`, 2.5);
     T([14, ty + th - 19], `COG nel modello  X ${nf(c0[0], 3)}  Y ${nf(c0[1], 3)}  Z ${nf(c0[2], 3)} m`, 2.3);
-    T([14, ty + th - 25], 'Quote in mm dall\'asse del baricentro. Sezioni: in grassetto le parti tagliate, poi i contorni visibili.', 2.0);
+    T([14, ty + th - 25], 'Quote in mm dall\'asse del baricentro. Sezioni: in grassetto le parti tagliate.', 1.8);
+    T([14, ty + th - 31], `Altimetrie in m: ±0,00 = intradosso piattabanda inferiore al baricentro (quota assoluta ${nf(c0[2] + z0, 3)} m)`, 1.8);
+    P.push({t: 'image', p: [366, ty + th - 16], w: 40, h: 40 * LOGO.h / LOGO.w, data: LOGO.data});
     T([252, ty + th - 6], d.project || '', 2.6); T([252, ty + th - 12], d.model || '', 2.0); T([252, ty + th - 18], `Gruppo: ${d.group || ''}`, 2.3);
     T([252, ty + th - 24], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.2); T([252, ty + 3], 'Peso e baricentro · Golfari · Trimble Connect', 2.0);
     return {prims: P, scale: SP};
@@ -771,6 +791,7 @@
     const local = draw.map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s = toL(m.pos[i] + d.ref[0], m.pos[i + 1] + d.ref[1], m.pos[i + 2] + d.ref[2]); q[i] = s[0]; q[i + 1] = s[1]; q[i + 2] = s[2]; } return {pos: q, idx: m.idx}; });
     const edges = d.outline ? null : local.map(m => featureEdges(m, 25)), EN = d.outline ? local.map(edgeNormals) : null;
     const lugs = d.lugs.map(l => ({...l, L: toL(l.x, l.y, l.z)})), hook = toL(d.hook[0], d.hook[1], d.hook[2]);
+    const z0 = zeroLevel(local), zr = z => z - z0; // quote relative al ±0,00
     const VIEWS = {front: {f: [0, 1, 0], up: [0, 0, 1], title: 'PROSPETTO'}, plan: {f: [0, 0, -1], up: [0, 1, 0], title: 'PIANTA'}, side: {f: [1, 0, 0], up: [0, 0, 1], title: 'SEZIONE TRASVERSALE'}};
     const H = {}; for (const k in VIEWS) H[k] = d.outline ? (h => ({...h, segs: dropShort(h.segs, 0.4, 0.01)}))(hiddenLine(local, EN.map(en => contourEdges(en, norm(VIEWS[k].f))), VIEWS[k], 1600)) : hiddenLine(local, edges, VIEWS[k], 1400);
     // ingombri comprensivi di funi e gancio
@@ -782,7 +803,7 @@
     const S = SCALES.find(s => s >= Math.max(need('front'), need('plan'), need('side'))) || 5000;
     const P = [];
     const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.25});
-    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: size || 2.5, layer: layer || 'TESTI', align: align || 'left'});
+    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.3, layer: layer || 'TESTI', align: align || 'left'});
     const C = (c, r, layer) => P.push({t: 'circle', c, r, layer: layer || 'BARICENTRO'});
     const SEC = (c, r, a0, a1, layer) => P.push({t: 'sector', c, r, a0, a1, layer: layer || 'BARICENTRO'});
     const rect = (x, y, w, h, layer, wt) => { Ln([x, y], [x + w, y], layer, wt); Ln([x + w, y], [x + w, y + h], layer, wt); Ln([x + w, y + h], [x, y + h], layer, wt); Ln([x, y + h], [x, y], layer, wt); };
@@ -818,8 +839,15 @@
         else { C(lp, Math.max(0.8, 0.12 * k2), 'GOLFARI'); } });
       // gancio
       C(hp, 1.6, 'FUNI'); Ln([hp[0], hp[1] + 1.6], [hp[0], hp[1] + 6], 'FUNI', 0.35);
-      if (k !== 'plan') T([hp[0] + 2.5, hp[1] + 4], `Gancio gru  z ${nf(d.hook[2], 2)}`, 2.2, 'FUNI');
-      cogSym(cp, 2.0); T([cp[0] + 3, cp[1] - 3], `COG = ${nf(d.weight, 1)} t`, 2.3, 'BARICENTRO');
+      if (k !== 'plan') T([hp[0] + 2.5, hp[1] + 4], `Gancio gru  ${lvl(zr(hook[2]))}`, 2.2, 'FUNI');
+      if (k !== 'plan') { // livello ±0,00 e quote dei golfari
+        const y0 = pm([0, 0, z0])[1], xr = Math.min(map(h.umax, 0)[0] + 3, r[0] + r[2] - 22), xl = map(h.umin, 0)[0] - 3;
+        Ln([xl, y0], [xr + 10, y0], 'QUOTE', 0.25); Ln([xr + 4, y0], [xr + 2.5, y0 + 2.6], 'QUOTE', 0.25); Ln([xr + 4, y0], [xr + 5.5, y0 + 2.6], 'QUOTE', 0.25); Ln([xr + 2.5, y0 + 2.6], [xr + 5.5, y0 + 2.6], 'QUOTE', 0.25);
+        T([xr + 6.5, y0 + 3], '±0,00', 2.4, 'QUOTE');
+        const seen = new Set(); lugs.forEach(l => { const lp = pm(l.L), key = Math.round(lp[0] / 6); if (seen.has(key)) return; seen.add(key); const out = lp[0] < hp[0] ? -1 : 1; T([lp[0] + out * 3.5, lp[1] + 3.5], lvl(zr(l.L[2])), 2.0, 'QUOTE', out < 0 ? 'right' : 'left'); });
+      }
+      cogSym(cp, 2.0); { const tx = `COG = ${nf(d.weight, 1)} t` + (k !== 'plan' ? `  ${lvl(zr(0))}` : ''), al = k === 'side' ? 'right' : 'left', tp = [cp[0] + (al === 'right' ? -3.5 : 3.5), cp[1] - 5.5];
+        P.push({t: 'tbox', p: tp, txt: tx, s: 2.3 * 1.3, layer: 'BARICENTRO', align: al}); T(tp, tx, 2.3, 'BARICENTRO', al); }
       // quote
       const hd = (xa, xb, y, txt) => { Ln([xa, y], [xb, y], 'QUOTE', 0.18); Ln([xa, y - 1.3], [xa, y + 1.3], 'QUOTE', 0.18); Ln([xb, y - 1.3], [xb, y + 1.3], 'QUOTE', 0.18); T([(xa + xb) / 2, y + 1], txt, 2.1, 'QUOTE', 'center'); };
       const vd = (ya, yb, x, txt) => { Ln([x, ya], [x, yb], 'QUOTE', 0.18); Ln([x - 1.3, ya], [x + 1.3, ya], 'QUOTE', 0.18); Ln([x - 1.3, yb], [x + 1.3, yb], 'QUOTE', 0.18); T([x + 1.5, (ya + yb) / 2], txt, 2.1, 'QUOTE'); };
@@ -841,12 +869,13 @@
     // tabella golfari e funi
     const t = R.tab, x0 = t[0] + 2; let y = t[1] + t[3] - 5;
     T([x0, y], 'GOLFARI E FUNI', 2.8); y -= 6;
-    const cols = [0, 9, 20, 34, 46, 58, 76];
+    const cols = [0, 9, 20, 33, 45, 59, 75];
     ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Golfare / grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
     lugs.forEach((l, i) => { const row = ['F' + (i + 1), l.g || '', nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
-      row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 3], (l.shackle || ''), 1.7); y -= 7.5; });
+      row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 3], (l.shackle || ''), 1.7); y -= 8; });
     y -= 2; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.fd && d.fd !== 1 ? ' (coeff. dinamico ' + nf(d.fd, 2) + ' incluso)' : ''}`, 2.2); y -= 5;
-    T([x0, y], `Gancio sopra il baricentro, quota ${nf(d.hook[2], 2)} m`, 2.0); y -= 4.5;
+    T([x0, y], `Gancio sopra il baricentro, quota ${lvl(zr(hook[2]))} m`, 2.0); y -= 4.5;
+    T([x0, y], `COG a quota ${lvl(zr(0))} m · golfari a ${[...new Set(lugs.map(l => lvl(zr(l.L[2]))))].join(' / ')} m`, 2.0); y -= 4.5;
     T([x0, y], 'Ripartizione statica dei carichi: valori da verificare.', 1.8);
     // cartiglio
     const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
@@ -854,6 +883,9 @@
     T([14, ty + th - 13], `Peso ${nf(d.weight, 2)} t · ${lugs.length} golfari · scala 1:${S} su A3`, 2.5);
     T([14, ty + th - 19], `COG nel modello  X ${nf(c0[0], 3)}  Y ${nf(c0[1], 3)}  Z ${nf(c0[2], 3)} m`, 2.3);
     T([14, ty + th - 25], 'Quote in mm dall\'asse del baricentro. Funi dal foro del golfare al gancio.', 2.0);
+    T([14, ty + th - 31], `Altimetrie in m: ±0,00 = intradosso piattabanda inferiore al baricentro (quota assoluta ${nf(c0[2] + z0, 3)} m)`, 2.0);
+    P.push({t: 'image', p: [366, ty + th - 16], w: 40, h: 40 * LOGO.h / LOGO.w, data: LOGO.data});
+
     T([252, ty + th - 6], d.project || '', 2.6); T([252, ty + th - 12], d.model || '', 2.0); T([252, ty + th - 18], `Gruppo: ${d.group || ''}`, 2.3);
     T([252, ty + th - 24], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.2); T([252, ty + 3], 'Peso e baricentro · Golfari · Trimble Connect', 2.0);
     return {prims: P, scale: S};
