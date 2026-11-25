@@ -166,7 +166,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=13"></script>
+<script src="draw.js?v=14"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -176,7 +176,7 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '13 (25/11/2026)';
+  const PB_VERSION = '14 (25/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store;
@@ -349,6 +349,8 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const iconUrl = g => new URL(`cog-${g.color % PAL.length}.png?v=3`, location.href).href;
   let drawn = [];
   async function removeIcons(list) {
+    // senza argomenti Trimble toglie tutti i simboli aggiunti da questa estensione: è il modo più affidabile
+    try { await api.viewer.removeIcon(); } catch (e) {}
     if (!list.length) return;
     try { await api.viewer.removeIcon(list); } catch (e) { for (const ic of list) { try { await api.viewer.removeIcon(ic); } catch (e2) {} } }
   }
@@ -360,7 +362,14 @@ table.lt td{padding:2px 3px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     return d(c.lugs.cog, c.cog) > 0.25; // dati salvati prima della v11: confronto approssimato
   }
   let iconSeq = 1000000 + Math.floor(Math.random() * 900000), iconMap = new Map();
+  // i ridisegni non si sovrappongono: uno alla volta, e l'ultima richiesta vince
+  let drawBusy = null, drawAgain = false;
   async function drawIcons() {
+    if (drawBusy) { drawAgain = true; return drawBusy; }
+    drawBusy = (async () => { do { drawAgain = false; await drawIconsNow(); } while (drawAgain); })();
+    try { await drawBusy; } finally { drawBusy = null; }
+  }
+  async function drawIconsNow() {
     await removeIcons(drawn); drawn = [];
     if (!showIcons) return;
     const icons = []; iconMap = new Map();

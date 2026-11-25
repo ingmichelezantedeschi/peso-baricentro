@@ -428,6 +428,16 @@
         m.set(k, cur); prev = cur; }
       return m.get(key);
     }
+    // verifica: una trave vera prosegue per buona parte del concio (scarta incroci di controventi, piatti isolati)
+    { const keep = [];
+      g0.forEach((_, gi) => { let tot = 0, ok = 0, jumps = 0, prev = null; const ws = [];
+        for (let u = U0 + 1; u < U1 - 1; u += 0.5) { tot++; const q = girderAt(gi, u); if (!q.missing) { ok++; ws.push(q.w); } if (prev != null && Math.abs(q.v - prev) > 0.1) jumps++; prev = q.v; }
+        ws.sort((x, y) => x - y); const wmed = ws.length ? ws[ws.length >> 1] : 0;
+        // trave: presente per il 60% della lunghezza, linea regolare (non salta da un elemento all'altro), piattabanda larga almeno 22 cm
+        if (!tot || (ok / tot >= 0.6 && jumps / tot < 0.35 && wmed >= 0.22)) keep.push(gi); });
+      // due tracce che finiscono sulla stessa piattabanda: se ne tiene una
+      const uniq = []; keep.forEach(gi => { if (!uniq.some(gj => Math.abs(g0[gj].v - g0[gi].v) < 0.3)) uniq.push(gi); });
+      if (uniq.length && uniq.length < g0.length) { const g2 = uniq.map(i => g0[i]), t2 = uniq.map(i => track[i]); g0.length = 0; g2.forEach(x => g0.push(x)); track.length = 0; t2.forEach(x => track.push(x)); } }
     // assi trasversali: elementi sottili in senso longitudinale e alti (diaframmi, irrigidimenti, fazzoletti dei traversi)
     const stations = g0.map(() => []);
     els.forEach(e => {
