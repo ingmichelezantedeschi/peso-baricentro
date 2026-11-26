@@ -178,9 +178,11 @@
   function logos(P, ty) {
     const w = 26, h = w * LOGO.h / LOGO.w, x = 406 - w;
     P.push({t: 'image', p: [x, ty + 2], w, h, data: LOGO.data});
-    if (LOGO_METALSAN.data) { const w2 = 46, h2 = w2 * LOGO_METALSAN.h / LOGO_METALSAN.w; P.push({t: 'image', p: [406 - w2, ty + 3 + h], w: w2, h: h2, data: LOGO_METALSAN.data}); }
-    else P.push({t: 'text', p: [x + w / 2, ty + 7 + h], txt: 'METALSAN', s: 4.2, layer: 'TESTI', align: 'center', bold: true});
+    const w2 = 38, h2 = w2 * LOGO_METALSAN.h / LOGO_METALSAN.w;
+    if (LOGO_METALSAN.data) P.push({t: 'image', p: [x - 3 - w2, ty + 1.5], w: w2, h: h2, data: LOGO_METALSAN.data});
+    else P.push({t: 'text', p: [x - 3 - w2 / 2, ty + 5], txt: 'METALSAN', s: 4.2, layer: 'TESTI', align: 'center', bold: true});
   }
+
   /** quota relativa in m con segno: ±0,00 / +1,23 / −0,45 */
   const lvl = v => Math.abs(v) < 0.005 ? '±0,00' : (v > 0 ? '+' : '−') + nf(Math.abs(v), 2);
   /** ±0,00 delle tavole di sollevamento: intradosso della piattabanda inferiore in corrispondenza del baricentro (coord. locali, z dal COG) */
@@ -825,12 +827,14 @@
     const ax = d.ax, pv = [-ax[1], ax[0]], c0 = d.cog;
     const toL = (x, y, z) => { const dx = x - c0[0], dy = y - c0[1]; return [dx * ax[0] + dy * ax[1], dx * pv[0] + dy * pv[1], z - c0[2]]; };
     const local = d.meshes.filter(m => !isMinute(m)).map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s = toL(m.pos[i] + d.ref[0], m.pos[i + 1] + d.ref[1], m.pos[i + 2] + d.ref[2]); q[i] = s[0]; q[i + 1] = s[1]; q[i + 2] = s[2]; } return {pos: q, idx: m.idx}; });
+    const ctx = d.ctxMeshes ? d.ctxMeshes.filter(m => !isMinute(m)).map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s2 = toL(m.pos[i] + d.ref[0], m.pos[i + 1] + d.ref[1], m.pos[i + 2] + d.ref[2]); q[i] = s2[0]; q[i + 1] = s2[1]; q[i + 2] = s2[2]; } return {pos: q, idx: m.idx}; }) : null;
+    const all = ctx || local;
     let U0 = Infinity, U1 = -Infinity; local.forEach(m => { for (let i = 0; i < m.pos.length; i += 3) { if (m.pos[i] < U0) U0 = m.pos[i]; if (m.pos[i] > U1) U1 = m.pos[i]; } });
     const g = d.geo, Lp = g.L / 1000, tp = g.t / 1000, Hp = (g.ev + g.R) / 1000;
     const lugs = d.lugs.map(l => ({...l, L: toL(l.x, l.y, l.z)})).sort((a, b) => a.L[0] - b.L[0]);
     // bordi reali della piattabanda sotto ogni golfare: dal taglio della geometria alla progressiva del golfare
     lugs.forEach(l => { let lo = Infinity, hi = -Infinity;
-      local.forEach(m => cutLines(m, 0, l.L[0] - 0.12).forEach(sg => sg.forEach(q => { if (Math.abs(q[2] - l.L[2]) < 0.08 && Math.abs(q[1] - l.gv) < l.gw / 2 + 0.25) { lo = Math.min(lo, q[1]); hi = Math.max(hi, q[1]); } })));
+      all.forEach(m => cutLines(m, 0, l.L[0] - 0.12).forEach(sg => sg.forEach(q => { if (Math.abs(q[2] - l.L[2]) < 0.08 && Math.abs(q[1] - l.gv) < l.gw / 2 + 0.25) { lo = Math.min(lo, q[1]); hi = Math.max(hi, q[1]); } })));
       if (isFinite(lo) && hi - lo > 0.1 && l.L[1] > lo && l.L[1] < hi) { l.gw = hi - lo; l.gv = (hi + lo) / 2; l.web = l.web ?? null; } });
     const P = [];
     const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.25});
@@ -846,15 +850,18 @@
     // ---- pianta
     const RP = [12, 150, 396, 137]; rect(...RP, 'CORNICE', 0.18);
     const PLAN = {f: [0, 0, -1], up: [0, 1, 0]};
-    const h0 = hiddenLine(local, local.map(m => contourEdges(edgeNormals(m), norm(PLAN.f))), PLAN, 1600), HP = {...h0, segs: dropShort(h0.segs, 0.3, 0.01)};
+    const h0 = hiddenLine(all, all.map(m => contourEdges(edgeNormals(m), norm(PLAN.f))), PLAN, 1600), HP = {...h0, segs: dropShort(h0.segs, 0.3, 0.01)};
+    // con riferimento alla marca: contorno della marca evidenziato sopra il resto della struttura
+    const HM = ctx ? (h => ({...h, segs: dropShort(h.segs, 0.2, 0.01)}))(hiddenLine(all, local.map(m => contourEdges(edgeNormals(m), norm(PLAN.f))), PLAN, 1600)) : null;
     // quote longitudinali: golfari quasi alla stessa progressiva su una sola riga
     const vMid = lugs.length ? (Math.max(...lugs.map(l => l.L[1])) + Math.min(...lugs.map(l => l.L[1]))) / 2 : 0;
     const upL = lugs.filter(l => l.L[1] > vMid + 0.3), dnL = lugs.filter(l => !(l.L[1] > vMid + 0.3));
     const nr = Math.max(upL.length, 1) + dnL.length + 1;
-    const SP = pick(Math.max((HP.umax - HP.umin) / (RP[2] - 40), (HP.vmax - HP.vmin) / (RP[3] - 36 - nr * 7)) * 1000), k2 = 1000 / SP;
+    const SP = pick(Math.max((HP.umax - HP.umin) / (RP[2] - 24), (HP.vmax - HP.vmin) / (RP[3] - 22 - nr * 6.5)) * 1000), k2 = 1000 / SP;
     const cu = (HP.umin + HP.umax) / 2, cv = (HP.vmin + HP.vmax) / 2, ox = RP[0] + RP[2] / 2, oy = RP[1] + RP[3] / 2 - (dnL.length + 1 - upL.length) * 3.5;
     const map = (u, v) => [ox + (u - cu) * k2, oy + (v - cv) * k2], pm = p => { const q = HP.prj(p[0], p[1], p[2]); return map(q[0], q[1]); };
-    HP.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), 'CONTORNI', 0.3));
+    HP.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), ctx ? 'VISTA_3D' : 'CONTORNI', ctx ? 0.18 : 0.3));
+    if (HM) HM.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), 'CONTORNI', 0.55));
     T([RP[0] + 3, RP[1] + RP[3] - 5], `PIANTA – posizione dei golfari   1:${SP}`, 2.6);
     T([RP[0] + 3, RP[1] + RP[3] - 11], `Riferimento: ${d.refLabel}`, 2.0);
     // riferimento: estremità iniziale
@@ -864,12 +871,7 @@
     lugs.forEach((l, i) => {
       const ph = l.phi || 0, cu2 = Math.cos(ph), sv2 = Math.sin(ph), cn = [[-Lp / 2, -tp / 2], [Lp / 2, -tp / 2], [Lp / 2, tp / 2], [-Lp / 2, tp / 2]].map(([a, b2]) => pm([l.L[0] + a * cu2 - b2 * sv2, l.L[1] + a * sv2 + b2 * cu2, 0]));
       cn.forEach((q, j) => Ln(q, cn[(j + 1) % 4], 'GOLFARI', 0.5)); const c = pm(l.L), hh = 1;
-      if (Math.abs(ph) > 0.01) { const e = pm([l.L[0] + Lp * 0.9 * cu2, l.L[1] + Lp * 0.9 * sv2, 0]), e2 = pm([l.L[0] - Lp * 0.9 * cu2, l.L[1] - Lp * 0.9 * sv2, 0]); dashed(e2, e, 'GOLFARI');
-        T([c[0] - 1.5, c[1] + (l.L[1] > vMid ? -4.5 : 3)], `${nf(Math.abs(ph) * 180 / Math.PI, 1)}°`, 1.8, 'GOLFARI', 'right'); }
-      T([c[0] + 1.5, c[1] + (l.L[1] > 0 ? 3 : -4.5)], 'G' + l.n, 2.2, 'GOLFARI');
-      // distanza trasversale dal bordo della piattabanda
-      const eOut = l.gv + Math.sign(l.L[1] - l.gv || 1) * l.gw / 2, side = Math.sign(l.L[1]) || 1, edge = l.L[1] > l.gv ? l.gv + l.gw / 2 : l.gv - l.gw / 2;
-      T([c[0] + 1.5, c[1] + (l.L[1] > 0 ? 7 : -8.5)], `${mm(l.L[1] - (l.gv - l.gw / 2))} / ${mm(l.gv + l.gw / 2 - l.L[1])} dai bordi`, 1.8, 'QUOTE');
+      { const up = l.L[1] > vMid, q = [c[0] + 2, c[1] + (up ? 2.5 : -5.5)]; P.push({t: 'tbox', p: q, txt: 'G' + l.n, s: 3.2 * 1.4, layer: 'SEZIONI'}); T(q, 'G' + l.n, 3.2, 'SEZIONI'); P[P.length - 1].bold = true; }
     });
     // ogni golfare quotato dal RIF. 0: sopra quelli della trave superiore, sotto quelli dell'inferiore
     [...upL].sort((a, b) => a.L[0] - b.L[0]).forEach((l, i) => { const c = pm(l.L), yq = yTop + 6 + i * 7; Ln(c, [c[0], yq + 1], 'QUOTE', 0.12); hd(r0[0], c[0], yq, `${mm(l.L[0] - U0)}  G${l.n}`, null, null); });
@@ -878,26 +880,37 @@
     // ---- sezioni trasversali sui golfari
     const nS = lugs.length, W = 396 / Math.max(1, nS);
     [...lugs].sort((a, b) => a.n - b.n).forEach((l, i) => {
-      const r = [12 + W * i, 50, W - 2, 98]; rect(...r, 'CORNICE', 0.18);
-      const at = l.L[0] - 0.12, view = {f: [1, 0, 0], up: [0, 0, 1]}, half = l.gw / 2 + 0.5;
-      const lat = [[1, 1, l.gv - half], [1, -1, l.gv + half], [2, 1, l.L[2] - 0.8]]; // solo la parte alta della trave
-      const latM = local.map(m => clipMesh(m, lat)), cuts = []; latM.forEach(m => cutLines(m, 0, at).forEach(c => cuts.push(c)));
-      const pl = [...lat, [0, 1, at + 1e-4], [0, -1, at + 0.5]], beyond = local.map(m => clipMesh(m, pl)).filter(m => m.idx.length);
+      const r = [12 + W * i, 38, W - 2, 110]; rect(...r, 'CORNICE', 0.18);
+      const rs = [r[0], r[1] + 46, r[2], r[3] - 46]; // sezione in alto, dettaglio in pianta in basso
+      Ln([r[0], r[1] + 46], [r[0] + r[2], r[1] + 46], 'CORNICE', 0.12);
+      const at = l.L[0] - 0.12, view = {f: [1, 0, 0], up: [0, 0, 1]}, half = l.gw / 2 + 0.2;
+      const lat = [[1, 1, l.gv - half], [1, -1, l.gv + half], [2, 1, l.L[2] - 0.45]]; // solo la parte alta della trave
+      const latM = all.map(m => clipMesh(m, lat)), cuts = []; latM.forEach(m => cutLines(m, 0, at).forEach(c => cuts.push(c)));
+      const pl = [...lat, [0, 1, at + 1e-4], [0, -1, at + 0.5]], beyond = all.map(m => clipMesh(m, pl)).filter(m => m.idx.length);
       const onClip = q => pl.some(([a, , v]) => Math.abs(q[a] - v) < 1e-5);
       const edges = beyond.map(m => contourEdges(edgeNormals(m), norm(view.f)).filter(e => !(onClip([e[0], e[1], e[2]]) && onClip([e[3], e[4], e[5]]))));
       const cm = {pos: new Float64Array(cuts.flat(2)), idx: new Uint32Array(0)};
       const hs = hiddenLine((beyond.length ? beyond : []).concat([cm]), edges, view, 1200), segs = dropShort(hs.segs, 0.03, 0.003);
       const cutS = cuts.map(c => { const a = hs.prj(...c[0]), b = hs.prj(...c[1]); return [a[0], a[1], b[0], b[1]]; });
       let u0 = hs.umin, u1 = hs.umax, v0 = hs.vmin, v1 = Math.max(hs.vmax, hs.prj(l.L[0], l.L[1], l.L[2] + Hp)[1]);
-      const S = pick(Math.max((u1 - u0) / (r[2] - 30), (v1 - v0) / (r[3] - 40)) * 1000), k = 1000 / S;
-      const ccu = (u0 + u1) / 2, ccv = (v0 + v1) / 2, sx = r[0] + r[2] / 2, sy = r[1] + r[3] / 2 - 4;
+      const S = pick(Math.max((u1 - u0) / (rs[2] - 30), (v1 - v0) / (rs[3] - 26)) * 1000), k = 1000 / S;
+      const ccu = (u0 + u1) / 2, ccv = (v0 + v1) / 2, sx = rs[0] + rs[2] / 2, sy = rs[1] + rs[3] / 2 - 6;
       const mp = (u, v) => [sx + (u - ccu) * k, sy + (v - ccv) * k], sp = p => { const q = hs.prj(p[0], p[1], p[2]); return mp(q[0], q[1]); };
       segs.forEach(sg => Ln(mp(sg[0], sg[1]), mp(sg[2], sg[3]), 'CONTORNI', 0.25));
       cutS.forEach(sg => Ln(mp(sg[0], sg[1]), mp(sg[2], sg[3]), 'TAGLIO', 0.6));
       T([r[0] + 2, r[1] + r[3] - 5], `SEZIONE G${l.n}   1:${S}`, 2.4);
       // golfare visto di taglio (spessore t, altezza H) sulla piattabanda
       const wv = Math.abs(Lp * Math.sin(l.phi || 0)) + Math.abs(tp * Math.cos(l.phi || 0)), gb = sp([l.L[0], l.L[1] - wv / 2, l.L[2]]), gt = sp([l.L[0], l.L[1] + wv / 2, l.L[2] + Hp]);
-      rect(Math.min(gb[0], gt[0]), gb[1], Math.max(0.8, Math.abs(gt[0] - gb[0])), gt[1] - gb[1], 'GOLFARI', 0.5);
+      { const fx = Math.abs(Math.sin(l.phi || 0)) > 0.3 ? Math.abs(Math.sin(l.phi || 0)) : 1, cx = sp([l.L[0], l.L[1], l.L[2]])[0], by = gb[1], kk = k / 1000;
+        const pr = (x, y) => [cx + x * fx * kk * (sp([l.L[0], l.L[1] + 1, l.L[2]])[0] > cx ? 1 : -1), by + y * kk], Lm = g.L, Rm = g.R, evm = g.ev, hvm = g.vside ? Math.min(+g.hv || 0, evm) : 0;
+        const tg = sgn => { const Px = sgn * Lm / 2, dy = hvm - evm, D = Math.hypot(Px, dy); if (D <= Rm) return [Px, evm - Math.sqrt(Math.max(0, Rm * Rm - Lm * Lm / 4))]; const phi = Math.atan2(dy, Px), be = Math.acos(Rm / D), c1 = [Rm * Math.cos(phi + be), evm + Rm * Math.sin(phi + be)], c2 = [Rm * Math.cos(phi - be), evm + Rm * Math.sin(phi - be)]; return sgn * c1[0] > sgn * c2[0] ? c1 : c2; };
+        const tr = tg(1), tl = tg(-1), poly = [[-Lm / 2, 0], [Lm / 2, 0], [Lm / 2, hvm], tr];
+        let a0 = Math.atan2(tr[1] - evm, tr[0]), a1 = Math.atan2(tl[1] - evm, tl[0]); while (a1 < a0) a1 += 2 * Math.PI;
+        for (let j = 1; j < 24; j++) { const a = a0 + (a1 - a0) * j / 24; poly.push([Rm * Math.cos(a), evm + Rm * Math.sin(a)]); }
+        poly.push(tl, [-Lm / 2, hvm]);
+        poly.forEach((q, j) => Ln(pr(...q), pr(...poly[(j + 1) % poly.length]), 'GOLFARI', 0.45));
+        const hole = []; for (let j = 0; j <= 24; j++) { const a = j / 24 * 2 * Math.PI; hole.push(pr(g.d0 / 2 * Math.cos(a), evm + g.d0 / 2 * Math.sin(a))); }
+        hole.forEach((q, j) => { if (j) Ln(hole[j - 1], q, 'GOLFARI', 0.4); }); }
       const ca = sp([l.L[0], l.L[1], l.L[2]]); dashed([ca[0], ca[1] + (gt[1] - gb[1]) + 4], [ca[0], ca[1] - 14], 'ASSI');
       // quote: dai bordi della piattabanda all'asse del golfare; asse anima; altezza del golfare
       const eL = sp([l.L[0], l.gv - l.gw / 2, l.L[2]]), eR = sp([l.L[0], l.gv + l.gw / 2, l.L[2]]), yq = gt[1] + 6;
@@ -906,17 +919,40 @@
       hd(xs[1], xs[2], yq, mm(Math.abs((xs[2] === eR[0] ? l.gv + l.gw / 2 : l.gv - l.gw / 2) - l.L[1])), ca[1] + 1, eR[1] + 1);
       hd(xs[0], xs[2], yq + 6, `piattabanda ${mm(l.gw)}`, null, null);
       const wa = sp([l.L[0], l.gv, l.L[2]]), off = l.L[1] - l.gv;
-      T([ca[0], r[1] + 5], Math.abs(off) < 0.005 ? 'golfare in asse alla piattabanda' : `asse golfare a ${mm(off)} mm dall'asse della piattabanda`, 1.8, 'QUOTE', 'center');
       vd(gb[1], gt[1], Math.max(gb[0], gt[0]) + 4, `H ${nf(g.ev + g.R, 0)}`);
+      // ---- dettaglio in pianta del golfare, allineato alla sezione (stessa scala in orizzontale)
+      { const ph = l.phi || 0, cph = Math.cos(ph), sph = Math.sin(ph);
+        const Sd = pick(Math.max((l.gw + 0.1) / (r[2] - 26), (Lp * Math.abs(cph) + 0.12) / 26) * 1000), kd = 1000 / Sd, dx0 = r[0] + r[2] / 2 - 4, dy0 = r[1] + 24;
+        const sgn = sp([l.L[0], l.L[1] + 1, l.L[2]])[0] > sp([l.L[0], l.L[1], l.L[2]])[0] ? 1 : -1, X = v => dx0 + sgn * (v - l.L[1]) * kd, Yd = du => dy0 + du * kd;
+        T([r[0] + 2, r[1] + 42], `DETTAGLIO IN PIANTA G${l.n}   1:${Sd}`, 2.0);
+        const span = Math.min(Lp * 0.6 + 0.04, 15 / kd), vL = l.gv - l.gw / 2, vR = l.gv + l.gw / 2;
+        [vL, vR].forEach(v => Ln([X(v), Yd(-span)], [X(v), Yd(span)], 'CONTORNI', 0.4));
+        dashed([X(l.gv), Yd(-span)], [X(l.gv), Yd(span)], 'ASSI');
+        const cn = [[-Lp / 2, -tp / 2], [Lp / 2, -tp / 2], [Lp / 2, tp / 2], [-Lp / 2, tp / 2]].map(([a, b2]) => [X(l.L[1] + a * sph + b2 * cph), Yd(a * cph - b2 * sph)]);
+        cn.forEach((q, j) => Ln(q, cn[(j + 1) % 4], 'GOLFARI', 0.5));
+        const vE1 = l.L[1] - Lp / 2 * sph, vE2 = l.L[1] + Lp / 2 * sph, E1 = [X(vE1), Yd(-Lp / 2 * cph)], E2 = [X(vE2), Yd(Lp / 2 * cph)];
+        Ln(E1, E2, 'ASSI', 0.15);
+        // quote a catena dal bordo sinistro al bordo destro della piattabanda (in vista): estremità, centro, estremità
+        const pts = [[X(vL), vL], [X(vE1), vE1], [X(vE2), vE2], [X(vR), vR]].sort((a, b) => a[0] - b[0]).filter((q, j, arr) => j === 0 || Math.abs(q[0] - arr[j - 1][0]) > 0.3);
+        const yq2 = Yd(-span) - 5;
+        for (let j = 1; j < pts.length; j++) hd(pts[j - 1][0], pts[j][0], yq2, mm(Math.abs(pts[j][1] - pts[j - 1][1])), null, null);
+        [E1, E2].forEach(E => Ln(E, [E[0], yq2 + 1], 'QUOTE', 0.1));
+        if (Math.abs(ph) > 0.01) { // angolo tra asse della trave (verticale nel dettaglio) e asse della piastra, quotato con un arco
+          const C0 = [X(l.L[1]), Yd(0)], rr = Math.min(14, Lp / 2 * kd + 5), dirP = [E2[0] - C0[0], E2[1] - C0[1]], aP = Math.atan2(dirP[1], dirP[0]), aA = Math.PI / 2;
+          Ln(C0, [C0[0], C0[1] + rr + 2], 'QUOTE', 0.15); Ln(C0, [C0[0] + Math.cos(aP) * (rr + 2), C0[1] + Math.sin(aP) * (rr + 2)], 'QUOTE', 0.15);
+          let b0 = Math.min(aP, aA), b1 = Math.max(aP, aA); P.push({t: 'arc', c: C0, r: rr, a0: b0 * 180 / Math.PI, a1: b1 * 180 / Math.PI, layer: 'QUOTE', w: 0.25});
+          const am = (b0 + b1) / 2, q = [C0[0] + Math.cos(am) * (rr + 2.5), C0[1] + Math.sin(am) * (rr + 2.5)];
+          T(q, `${nf(Math.abs(ph) * 180 / Math.PI, 1)}°`, 2.4, 'QUOTE', Math.cos(am) >= 0 ? 'left' : 'right'); P[P.length - 1].bold = true; }
+        else T([Math.max(X(vL), X(vR)) + 2, dy0], 'lungo l\'asse', 1.8, 'GOLFARI');
+      }
     });
     // cartiglio
-    const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
-    T([14, ty + th - 6], `POSIZIONAMENTO GOLFARI – ${d.name}`, 3.0); P[P.length - 1].bold = true;
-    T([14, ty + th - 13], `Riferimento: ${d.refLabel} · golfari ${lugs.map(l => 'G' + l.n).join(', ')}`, 2.0);
-    T([14, ty + th - 19], `Piastra ${nf(g.L, 0)} × ${nf(g.ev + g.R, 0)} × ${nf(g.t, 0)} mm, ${g.rot ? 'ruotata in pianta verso il punto di presa (angolo dall\'asse della trave)' : 'disposta lungo l\'asse della trave'}`, 1.9);
-    T([14, ty + th - 25], 'Quote in mm. Distanze longitudinali dal RIF. 0 (estremità iniziale), misurate lungo l\'asse del concio.', 1.8);
-    T([252, ty + th - 6], d.project || '', 2.4); T([252, ty + th - 12], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.0);
-    T([252, ty + 3], 'Peso e baricentro · Golfari · Trimble Connect', 1.6);
+    const ty = 8, th = 28; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
+    T([14, ty + th - 5.5], `POSIZIONAMENTO GOLFARI – ${d.name}`, 3.0); P[P.length - 1].bold = true;
+    T([14, ty + th - 11.5], `Riferimento: ${d.refLabel} · piastra ${nf(g.L, 0)} × ${nf(g.ev + g.R, 0)} × ${nf(g.t, 0)} mm${g.rot ? ', ruotata in pianta verso il punto di presa' : ', lungo l\'asse della trave'}`, 1.9);
+    T([14, ty + th - 17], 'Quote in mm. Distanze longitudinali dal RIF. 0, lungo l\'asse del concio.', 1.8);
+    T([252, ty + th - 5.5], d.project || '', 2.4); T([252, ty + th - 11.5], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.0);
+    T([252, ty + 2.5], 'Peso e baricentro · Golfari · Trimble Connect', 1.5);
     logos(P, ty);
     return {prims: P, scale: SP};
   }
