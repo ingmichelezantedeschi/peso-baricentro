@@ -631,12 +631,12 @@
   // ------------------------------------------------------------------ VERIFICA GOLFARE EN 1993-1-8 (stesse formule del foglio MET-044_Calcolo_golfari)
   // acciaio: fy, fu per t<=40 mm, fy, fu per t>40 mm, beta_w (prospetto 4.1)
   const STEELS = {S235: [235, 360, 215, 360, 0.8], S275: [275, 430, 255, 410, 0.85], S355: [355, 510, 335, 470, 0.9], S420: [420, 520, 390, 520, 1.0], S460: [460, 540, 430, 540, 1.0]};
-  const LUG_GEO_DEFAULT = {L: 250, t: 20, d: 40, d0: 50, R: 75, ev: 76, as: 7, n: 2, mat: 'S355', gM0: 1.05, gM2: 1.25, gM6: 1.0, gtot: 2, pOut: 0.1, bw: 0, prep: 'fillet', bev: 45, root: 0};
+  const LUG_GEO_DEFAULT = {holeAuto: false, gap: 5, L: 250, t: 20, d: 40, d0: 50, R: 75, ev: 76, as: 7, n: 2, mat: 'S355', gM0: 1.05, gM2: 1.25, gM6: 1.0, gtot: 2, pOut: 0.1, bw: 0, prep: 'fillet', bev: 45, root: 0};
   /** g: geometria in mm e materiale; F: {FEk kN (tiro caratteristico), aV gradi (fune sull'orizzontale), aH gradi (fune rispetto al piano del golfare)} */
   function lugCheck(g, F) {
     const st = STEELS[g.mat] || STEELS.S355, t = g.t, L = g.L, d = g.d, d0 = g.d0, ev = g.ev, as = g.as, n = g.n;
     const fy = t <= 40 ? st[0] : st[2], fu = t <= 40 ? st[1] : st[3], bw = g.bw > 0 ? g.bw : st[4], E = 210000;
-    const a = g.R - 0.5 * d0, c = a, rad = x => x * Math.PI / 180;
+    const a = Math.max(1e-6, g.R - 0.5 * d0), c = a, rad = x => x * Math.PI / 180; // foro più grande della piastra: verifica non soddisfatta
     const FEk = F.FEk, FEd = g.gtot * FEk, Hs = FEd * g.pOut;
     const VEd = FEd * Math.sin(rad(F.aV)), HEd = FEd * Math.cos(rad(F.aV)), Hx = HEd * Math.cos(rad(F.aH)), Hy = HEd * Math.sin(rad(F.aH)) + Hs;
     const it = [];
@@ -708,7 +708,7 @@
     { const an = Math.PI / 4, pa = m(C[0] + R * Math.cos(an), C[1] + R * Math.sin(an)), pc = m(...C), pe = [pa[0] + 10, pa[1] + 10];
       Ln(pc, pa, 'QUOTE', 0.2); Ln(pa, pe, 'QUOTE', 0.2); Ln(pe, [pe[0] + 14, pe[1]], 'QUOTE', 0.2); T([pe[0] + 1, pe[1] + 2], `R ${nf(R, 0)}`, 2.6, 'QUOTE'); }
     { const an = -Math.PI * 0.8, pa = m(C[0] + d0 / 2 * Math.cos(an), C[1] + d0 / 2 * Math.sin(an)), pe = [pa[0] - 22, pa[1] - 8];
-      Ln(pa, pe, 'QUOTE', 0.2); Ln(pe, [pe[0] - 22, pe[1]], 'QUOTE', 0.2); T([pe[0] - 21, pe[1] + 2], `Ø ${nf(d0, 0)} foro`, 2.6, 'QUOTE'); }
+      Ln(pa, pe, 'QUOTE', 0.2); Ln(pe, [pe[0] - 22, pe[1]], 'QUOTE', 0.2); T([pe[0] - 21, pe[1] + 2], `Ø ${nf(d0, 1)} foro`, 2.6, 'QUOTE'); }
     // ---- dettaglio del cianfrino (in alto a sinistra nel riquadro del prospetto)
     if (K) {
       const box = [RF[0] + 4, RF[1] + RF[3] - 70, 84, 58], hh = hK + Math.max(12, t * 0.6);
@@ -759,7 +759,7 @@
     let ny = RN[1] + RN[3] - 6; const note = (txt, sz) => { T([RN[0] + 3, ny], txt, sz || 2.1); ny -= (sz || 2.1) * 1.3 + 2; };
     note('NOTE', 2.6);
     note(`Materiale: acciaio ${g.mat}, lamiera sp. ${nf(t, 0)} mm`);
-    note(`Foro Ø ${nf(d0, 0)} mm per perno Ø ${nf(g.d, 0)} mm${info.shackle ? ' (' + info.shackle + ')' : ''}`);
+    note(`Foro Ø ${nf(d0, 1)} mm per perno Ø ${nf(g.d, 1)} mm${info.shackle ? ' (' + info.shackle + ')' : ''}`); if (g.holeAuto) note('Foro dimensionato sul grillo maggiore');
     if (K) { note(`Doppio cianfrino a V (K): angolo ${nf(bev, 0)}°, spalla c = ${nf(root, 0)} mm,`); note(`altezza cianfrino ${nf(hK, 1)} mm; saldatura a piena penetrazione`); }
     else { note(`Saldatura a cordone d'angolo a = ${nf(g.as, 0)} mm,`); note(`${g.n >= 2 ? 'sui due lati' : 'su un lato'}, per tutta la lunghezza L`); }
     if (info.count) note(`Quantità: ${info.count} pezzi`);
@@ -1021,7 +1021,7 @@
     const t = R.tab, x0 = t[0] + 2; let y = t[1] + t[3] - 5;
     T([x0, y], 'GOLFARI E FUNI', 2.8); y -= 5.5;
     const cols = [0, 10, 21, 35, 48, 62, 78];
-    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Golfare / grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
+    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
     lugs.forEach(l => { const row = ['F' + l.n, l.g || '', nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
       row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 3.4], (l.shackle || ''), 1.7); y -= 8.5; });
     y -= 1; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.fd && d.fd !== 1 ? ' (coeff. dinamico ' + nf(d.fd, 2) + ' incluso)' : ''}`, 2.2); y -= 4.5;
@@ -1133,7 +1133,7 @@
     const t = R.tab, x0 = t[0] + 2; let y = t[1] + t[3] - 5;
     T([x0, y], 'GOLFARI E FUNI', 2.8); y -= 6;
     const cols = [0, 9, 20, 33, 45, 59, 75];
-    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Golfare / grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
+    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
     lugs.forEach((l, i) => { const row = ['F' + (i + 1), l.g || '', nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
       row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 3], (l.shackle || ''), 1.7); y -= 8; });
     y -= 2; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.fd && d.fd !== 1 ? ' (coeff. dinamico ' + nf(d.fd, 2) + ' incluso)' : ''}`, 2.2); y -= 5;
