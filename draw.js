@@ -312,8 +312,8 @@
       } else if (p.t === 'arc') { doc.setDrawColor(...c); doc.setLineWidth(p.w || 0.25); const n = Math.max(8, Math.ceil(Math.abs(p.a1 - p.a0) / 4)); let q = null;
         for (let i = 0; i <= n; i++) { const a = (p.a0 + (p.a1 - p.a0) * i / n) * Math.PI / 180, r = [p.c[0] + p.r * Math.cos(a), Y(p.c[1] + p.r * Math.sin(a))]; if (q) doc.line(q[0], q[1], r[0], r[1]); q = r; }
       } else if (p.t === 'image') { try { doc.addImage(p.data, 'PNG', p.p[0], Y(p.p[1] + p.h), p.w, p.h); } catch (e) {}
-      } else if (p.t === 'tbox') { // sfondo bianco sotto un testo (allineato a sinistra)
-        doc.setFontSize(p.s / 0.3528); const w = doc.getTextWidth(p.txt), pd = p.s * 0.35;
+      } else if (p.t === 'tbox') { // sfondo bianco sotto un testo
+        doc.setFont('helvetica', p.bold === false ? 'normal' : 'bold'); doc.setFontSize(p.s / 0.3528); const w = doc.getTextWidth(p.txt), pd = p.s * 0.35;
         const x0 = p.align === 'right' ? p.p[0] - w : p.align === 'center' ? p.p[0] - w / 2 : p.p[0]; doc.setFillColor(255, 255, 255); doc.setDrawColor(...c); doc.setLineWidth(0.2); doc.rect(x0 - pd, Y(p.p[1]) - p.s * 0.6 - pd * 0.5, w + 2 * pd, p.s * 1.2 + pd, 'FD');
       } else if (p.t === 'text') { doc.setTextColor(...c); doc.setFont('helvetica', p.bold ? 'bold' : 'normal'); doc.setFontSize(p.s / 0.3528); doc.text(p.txt, p.a ? p.a[0] : p.p[0], Y(p.p[1]), {align: p.align, baseline: 'middle'}); }
     }
@@ -1169,12 +1169,13 @@
       // funi
       const grp = new Map(); // golfari che in questa vista cadono nello stesso punto: etichetta unica
       lugs.forEach((l, i) => { const lp = pm([l.L[0], l.L[1], l.L[2] + 0.16]); Ln(lp, hp, 'FUNI', k === 'plan' ? 1.0 : 0.6);
-        const key = Math.round(lp[0] / 10) + ',' + Math.round(lp[1] / 10); if (!grp.has(key)) grp.set(key, {lp, ids: [], al: []}); grp.get(key).ids.push(i + 1); grp.get(key).al.push(l.alpha); });
+        let gk = [...grp.keys()].find(kk => Math.hypot(grp.get(kk).lp[0] - lp[0], grp.get(kk).lp[1] - lp[1]) < 4.5); if (gk == null) { gk = grp.size; grp.set(gk, {lp, ids: [], al: []}); } grp.get(gk).ids.push(i + 1); grp.get(gk).al.push(l.alpha); });
+      const nRowT = 1, nRowB = 1; // righe di quote sopra/sotto la pianta
       const placed = [];
       grp.forEach(gq => { const lp = gq.lp, mid = [(lp[0] + hp[0]) / 2, (lp[1] + hp[1]) / 2], left = lp[0] < hp[0] - 0.5, lab = gq.ids.map(x => 'F' + x).join('/');
         if (k === 'plan') { // fuori dalla struttura: sopra i golfari in alto, sotto quelli in basso, su fondo bianco
           const ext = {top: map(0, h.vmax)[1], bot: map(0, h.vmin)[1]};
-          const up = lp[1] >= cp[1], yMinL = Math.min(...lugs.map(l2 => pm(l2.L)[1])), q = [lp[0], up ? Math.max(lp[1] + 6, ext.top + 4) : Math.min(yMinL - 15, ext.bot - 7)], sz = 3.2;
+          const up = lp[1] >= cp[1], q = [lp[0], up ? ext.top + 15 : ext.bot - 17], sz = 3.2;
           Ln(lp, [q[0], q[1] + (up ? -1.5 : 3.5)], 'FUNI', 0.15);
           P.push({t: 'tbox', p: q, txt: lab, s: sz * 1.3, layer: 'FUNI', align: 'center'}); T(q, lab, sz, 'FUNI', 'center'); P[P.length - 1].bold = true;
         } else { const q = [mid[0] + (left ? -2.5 : 2.5), mid[1] + 1.5]; while (placed.some(o => Math.abs(o[0] - q[0]) < 12 && Math.abs(o[1] - q[1]) < 5.5)) q[1] -= 6; placed.push(q.slice()); P.push({t: 'tbox', p: q, txt: lab, s: 3.0 * 1.3, layer: 'FUNI', align: left ? 'right' : 'left'}); T(q, lab, 3.0, 'FUNI', left ? 'right' : 'left'); P[P.length - 1].bold = true; }
@@ -1196,19 +1197,35 @@
       // quote
       const hd = (xa, xb, y, txt) => { Ln([xa, y], [xb, y], 'QUOTE', 0.18); Ln([xa, y - 1.3], [xa, y + 1.3], 'QUOTE', 0.18); Ln([xb, y - 1.3], [xb, y + 1.3], 'QUOTE', 0.18); T([(xa + xb) / 2, y + 1], txt, 2.1, 'QUOTE', 'center'); };
       const vd = (ya, yb, x, txt) => { Ln([x, ya], [x, yb], 'QUOTE', 0.18); Ln([x - 1.3, ya], [x + 1.3, ya], 'QUOTE', 0.18); Ln([x - 1.3, yb], [x + 1.3, yb], 'QUOTE', 0.18); T([x + 1.5, (ya + yb) / 2], txt, 2.1, 'QUOTE'); };
-      if (k === 'front') {
-        const yq = Math.max(...lugs.map(l => pm(l.L)[1])) + 4;
-        clusters(lugs.map(l => l.L[0])).forEach(c => { const x = pm([c.v, 0, 0])[0]; hd(Math.min(x, cp[0]), Math.max(x, cp[0]), yq, c.txt); });
+      // quote di ogni golfare dal baricentro: una quota per golfare, mai valori accoppiati
+      const vdS = (ya, yb, x, txt, left) => { Ln([x, ya], [x, yb], 'QUOTE', 0.18); Ln([x - 1.3, ya], [x + 1.3, ya], 'QUOTE', 0.18); Ln([x - 1.3, yb], [x + 1.3, yb], 'QUOTE', 0.18); T([x + (left ? -1.5 : 1.5), (ya + yb) / 2], txt, 2.3, 'QUOTE', left ? 'right' : 'left'); };
+      const hdS = (xa, xb, y, txt) => { Ln([xa, y], [xb, y], 'QUOTE', 0.18); Ln([xa, y - 1.3], [xa, y + 1.3], 'QUOTE', 0.18); Ln([xb, y - 1.3], [xb, y + 1.3], 'QUOTE', 0.18); T([(xa + xb) / 2, y + 1.2], txt, 2.3, 'QUOTE', 'center'); };
+      const nm = l => 'F' + (lugs.indexOf(l) + 1);
+      if (k === 'plan') {
+        const ext = {top: map(0, h.vmax)[1], bot: map(0, h.vmin)[1], left: map(h.umin, 0)[0], right: map(h.umax, 0)[0]};
+        const top = lugs.filter(l => l.L[1] >= 0), bot = lugs.filter(l => l.L[1] < 0);
+        // X lungo l'asse: sopra per la trave superiore, sotto per l'inferiore
+        [[top, ext.top + 6, 1], [bot, ext.bot - 6, -1]].forEach(([ls, y, sg]) => ls.forEach(l => { const lp = pm(l.L); Ln(lp, [lp[0], y + sg * 1.5], 'QUOTE', 0.12); hdS(Math.min(lp[0], cp[0]), Math.max(lp[0], cp[0]), y, `X ${mm(l.L[0])}`); }));
+        Ln([cp[0], ext.top + 7.5], [cp[0], ext.bot - 7.5], 'QUOTE', 0.12);
+        // Y trasversale: a sinistra per i golfari di sinistra, a destra per quelli di destra
+        const lf = lugs.filter(l => l.L[0] < 0), rt = lugs.filter(l => l.L[0] >= 0);
+        [[lf, ext.left - 7, true], [rt, ext.right + 7, false]].forEach(([ls, x, left]) => ls.forEach(l => { const lp = pm(l.L); Ln(lp, [x + (left ? -1.5 : 1.5), lp[1]], 'QUOTE', 0.12); vdS(Math.min(lp[1], cp[1]), Math.max(lp[1], cp[1]), x, `Y ${mm(l.L[1])}`, left); }));
+        Ln([ext.left - 8.5, cp[1]], [ext.right + 8.5, cp[1]], 'QUOTE', 0.12);
+      }
+      if (k === 'front') { // una riga per trave
+        const byG = [...new Set(lugs.map(l => l.g || ''))];
+        const y0q = Math.max(...lugs.map(l => pm(l.L)[1])) + 9;
+        byG.forEach((gn, i) => { const ls = lugs.filter(l => (l.g || '') === gn), y = y0q + i * 6;
+          ls.forEach(l => { const x = pm(l.L)[0]; hdS(Math.min(x, cp[0]), Math.max(x, cp[0]), y, mm(l.L[0])); });
+          T([Math.min(...ls.map(l => pm(l.L)[0]), cp[0]) - 2, y], ls.map(nm).join('-'), 2.1, 'QUOTE', 'right'); });
         const lz = pm(lugs[0].L); vd(lz[1], hp[1], hp[0] - 10, mm(hook[2] - lugs[0].L[2]));
       }
-      if (k === 'plan') {
-        const xq = Math.max(...lugs.map(l => pm(l.L)[0])) + 8;
-        clusters(lugs.map(l => l.L[1])).forEach(c => { const y = pm([0, c.v, 0])[1]; vd(Math.min(y, cp[1]), Math.max(y, cp[1]), xq, c.txt); });
-        const yq = Math.min(...lugs.map(l => pm(l.L)[1])) - 8;
-        clusters(lugs.map(l => l.L[0])).forEach(c => { const x = pm([c.v, 0, 0])[0]; hd(Math.min(x, cp[0]), Math.max(x, cp[0]), yq, c.txt); });
+      if (k === 'side') { // una riga per lato del baricentro (golfari a sinistra / a destra in pianta)
+        const sides = [lugs.filter(l => l.L[0] < 0), lugs.filter(l => l.L[0] >= 0)].filter(a => a.length);
+        const y0q = Math.max(...lugs.map(l => pm(l.L)[1])) + 9;
+        sides.forEach((ls, i) => { const y = y0q + i * 6; ls.forEach(l => { const x = pm(l.L)[0]; hdS(Math.min(x, cp[0]), Math.max(x, cp[0]), y, mm(l.L[1])); });
+          T([Math.min(...ls.map(l => pm(l.L)[0]), cp[0]) - 2, y], ls.map(nm).join('-'), 2.1, 'QUOTE', 'right'); });
       }
-      if (k === 'side') { const yq = Math.max(...lugs.map(l => pm(l.L)[1])) + 4;
-        clusters(lugs.map(l => l.L[1])).forEach(c => { const x = pm([0, c.v, 0])[0]; hd(Math.min(x, cp[0]), Math.max(x, cp[0]), yq, c.txt); }); }
     }
     place('front'); place('plan'); place('side');
     // tabella golfari e funi
