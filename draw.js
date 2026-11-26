@@ -1134,6 +1134,74 @@
       return {src: k, name: p.name, W: p.W, u0, u1, ucog: cu[0], vcog: cu[1], zcog: p.cog[2] - R0[2]}; }).sort((a, b) => (a.u0 + a.u1) - (b.u0 + b.u1));
     return {R0, meshes, owner, lm, sm, conci};
   }
+
+  /**
+   * Appoggi di UN macroconcio: i conci sono i tratti di trave fra un giunto e l'altro, ricavati dalle marche (assiemi) delle travi.
+   * items: [{ms (rel. ref), pid (identificativo dell'assieme)}], ref, cog (ass.), W (t)
+   */
+  function supportSetupMacro(items, ref, cog, W) {
+    const R0 = ref, meshes = items.map(i => i.ms), cogR = [0, 1, 2].map(i => cog[i] - R0[i]);
+    const lm = liftModel(meshes, cogR, {});
+    if (!lm.girders.length) throw new Error('nessuna trave riconosciuta nel macroconcio');
+    const sm = supportModel(lm), els = lm._dbg.els;
+    // ingombro di ogni assieme lungo l'asse e sulla trasversale
+    const byP = new Map(); els.forEach(e => { if (e.small) return; const pid = items[e.i].pid; let b = byP.get(pid); if (!b) { b = {pid, u0: Infinity, u1: -Infinity, v0: Infinity, v1: -Infinity, idx: []}; byP.set(pid, b); }
+      b.u0 = Math.min(b.u0, e.u0); b.u1 = Math.max(b.u1, e.u1); b.v0 = Math.min(b.v0, e.v0); b.v1 = Math.max(b.v1, e.v1); b.idx.push(e.i); });
+    // tratti di trave: assiemi lunghi (> 2 m) che stanno su una trave riconosciuta
+    const segs = []; byP.forEach(b => { if (b.u1 - b.u0 < 2) return; const um = (b.u0 + b.u1) / 2;
+      lm.girders.forEach((g, gi) => { const gv = lm.girderAt(gi, um).v; if (gv > b.v0 - 0.1 && gv < b.v1 + 0.1 && b.v1 - b.v0 < 2.5) segs.push({...b, gi}); }); });
+    // giunti: estremità interne dei tratti, raggruppate fra le travi (entro 0,8 m)
+    const U0 = lm.umin, U1 = lm.umax, ends = [];
+    segs.forEach(s => [s.u0, s.u1].forEach(u => { if (u > U0 + 1 && u < U1 - 1) ends.push(u); }));
+    ends.sort((a, b) => a - b); const J = [];
+    ends.forEach(u => { const l = J[J.length - 1]; if (l && u - l.max < 0.8) { l.max = u; l.us.push(u); } else J.push({max: u, us: [u]}); });
+    const joints = J.map(j => j.us.reduce((a, b) => a + b, 0) / j.us.length);
+    const cuts = [U0, ...joints, U1], conci = [];
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const u0 = cuts[k], u1 = cuts[k + 1]; let V = 0; const C = [0, 0, 0];
+      meshes.forEach((m, i) => { if (els[i].small) return; const vc = volCentroid(m); const uv = lm.toUV(vc.c[0], vc.c[1]); if (uv[0] < u0 || uv[0] >= u1) return; V += vc.V; for (let d = 0; d < 3; d++) C[d] += vc.V * vc.c[d]; });
+      const c = V > 0 ? C.map(x => x / V) : [...lm.fromUV((u0 + u1) / 2, 0), cogR[2]], uv = lm.toUV(c[0], c[1]);
+      const pids = [...new Set(segs.filter(s => (s.u0 + s.u1) / 2 > u0 && (s.u0 + s.u1) / 2 < u1).map(s => s.pid))];
+      conci.push({k, name: 'Concio ' + (k + 1), u0, u1, ucog: uv[0], vcog: uv[1], zcog: c[2], V, pids});
+    }
+    const Vt = conci.reduce((a, c) => a + c.V, 0) || 1; conci.forEach(c => { c.W = W * c.V / Vt; });
+    const cu = lm.toUV(cogR[0], cogR[1]);
+    return {macro: true, R0, meshes, lm, sm, conci, W, ucog: cu[0], vcog: cu[1], joints};
+  }
+  /**
+   * File di appoggi del macroconcio (rev: si parte dall'altra estremità):
+   * concio 1: a dJ prima del giunto e una fila simmetrica rispetto al suo baricentro; conci intermedi: a dJ prima del giunto successivo;
+   * ultimo concio: a dEnd dall'estremità. Ogni fila sull'asse di diaframma/irrigidimento più adatto.
+   */
+  function placeSupportsMacro(lm, sm, conci, cfg) {
+    const gs = cfg.girders, dJ = cfg.dJ != null ? cfg.dJ : 1.5, dEnd = cfg.free > 0 ? cfg.free : 0.5, Ls = cfg.Ls || 0.4, Bs = cfg.Bs || 0.4, rev = !!cfg.rev, out = [];
+    const S = rev ? -1 : 1, n = conci.length;
+    const ord = rev ? [...conci].reverse() : conci;              // ordine di lavoro: dal concio 1
+    const lo = c => rev ? c.u1 : c.u0, hi = c => rev ? c.u0 : c.u1;   // inizio/fine nel verso di lavoro
+    const stAll = gi => lm.stations[gi].map(s => s.u);
+    const nearest = (arr, u) => arr.reduce((b, x) => b == null || Math.abs(x - u) < Math.abs(b - u) ? x : b, null);
+    const inC = (c, u) => u > Math.min(c.u0, c.u1) + 0.2 && u < Math.max(c.u0, c.u1) - 0.2;
+    const snap = (t, c, before) => { // before: la fila deve stare ad almeno dJ dal giunto (verso l'inizio)
+      const cand = []; gs.forEach(gi => stAll(gi).forEach(u => { if (inC(c, u) && (before == null || S * u <= S * before + 0.02)) cand.push(u); }));
+      if (!cand.length) return t;
+      let best = null, bc = Infinity; cand.forEach(u => { let cost = Math.abs(u - t); gs.forEach(gi => { const nn = nearest(stAll(gi).filter(x => inC(c, x)), u); cost += 2 * Math.min(nn == null ? 0.5 : Math.abs(nn - u), 0.5); }); if (cost < bc) { bc = cost; best = u; } });
+      return best; };
+    const rows = []; // {k (indice reale del concio), side, t, u}
+    ord.forEach((c, j) => {
+      const last = j === n - 1, first = j === 0;
+      if (!last) { const t = hi(c) - S * dJ; rows.push({k: c.k, side: 0, t, u: snap(t, c, t), role: 'giunto'}); }
+      else { const t = hi(c) - S * dEnd; rows.push({k: c.k, side: 0, t, u: snap(t, c), role: 'estremità'}); }
+      if (first) { const a = rows[rows.length - 1].u, t = Math.min(Math.max(2 * c.ucog - a, Math.min(c.u0, c.u1) + 0.3), Math.max(c.u0, c.u1) - 0.3); rows.push({k: c.k, side: 1, t, u: snap(t, c), role: 'simmetrico al baricentro'}); }
+    });
+    rows.sort((a, b) => S * (a.u - b.u));
+    rows.forEach(r => { const key = r.k + ':' + r.side; if (cfg.custom && cfg.custom[key] != null) { r.u = cfg.custom[key]; r.moved = true; } });
+    rows.forEach(r => gs.forEach(gi => {
+      let u = r.u; const st = stAll(gi).filter(x => inC(conci[r.k], x)); if (!r.moved) { const nn = nearest(st, u); if (nn != null && Math.abs(nn - u) < 0.3) u = nn; }
+      const p = sm.pointBelow(gi, u, Ls, Bs); p.near = st.length ? Math.min(...st.map(s => Math.abs(s - u))) : null;
+      out.push({...p, k: r.k, side: r.side, target: r.t, moved: !!r.moved, role: r.role}); }));
+    return out;
+  }
+
   /** sagoma della trave gi fra u0 e u1: [u, quota estradosso, quota intradosso] */
   function girderProfile(lm, sm, gi, u0, u1) {
     const out = [], n = Math.max(2, Math.ceil((u1 - u0) / 0.25));
@@ -1145,16 +1213,23 @@
    * cfg: {girders, dJ, free, Ls, Bs, custom, names: {gi: 'T1'}}
    */
   function computeSupports(st, cfg) {
-    const {lm, sm, conci, R0} = st, pts = placeSupports(lm, sm, conci, cfg);
+    const {lm, sm, conci, R0} = st, pts = st.macro ? placeSupportsMacro(lm, sm, conci, cfg) : placeSupports(lm, sm, conci, cfg);
     const warn = [];
+    if (st.macro) { // il macroconcio è un corpo rigido su tutti gli appoggi
+      const r = supportReactions(pts, st.W, st.ucog, st.vcog); pts.forEach((p, i) => { p.R = r.R[i]; });
+      conci.forEach(c => { c.misalign = 0; c.negative = false; }); st.misalign = r.misalign; st.negative = r.negative;
+      if (r.negative) conci.forEach((c, k) => { if (pts.some(p => p.k === k && p.R < 0)) c.negative = true; });
+    } else
     conci.forEach((c, k) => { const ps = pts.filter(p => p.k === k), ok = ps.filter(p => isFinite(p.z));
       const r = supportReactions(ps, c.W, c.ucog, c.vcog); ps.forEach((p, i) => { p.R = r.R[i]; });
       c.misalign = r.misalign; c.negative = r.negative; });
     const zmin = Math.min(...pts.filter(p => isFinite(p.z)).map(p => p.z));
     pts.forEach(p => { p.g = (cfg.names || {})[p.gi] || 'T' + (p.gi + 1); });
-    pts.sort((a, b) => a.k - b.k || a.side - b.side || a.g.localeCompare(b.g, 'it', {numeric: true}));
+    if (st.macro) { const S = cfg.rev ? -1 : 1, ru = {}; pts.forEach(p => { const key = p.k + ':' + p.side; if (ru[key] == null) ru[key] = p.u; });
+      pts.sort((a, b) => S * (ru[a.k + ':' + a.side] - ru[b.k + ':' + b.side]) || a.g.localeCompare(b.g, 'it', {numeric: true})); }
+    else pts.sort((a, b) => a.k - b.k || a.side - b.side || a.g.localeCompare(b.g, 'it', {numeric: true}));
     pts.forEach((p, i) => { p.n = i + 1;
-      p.dz = isFinite(p.z) ? (Math.abs(p.z - zmin) < 0.0005 ? '±0' : String(Math.round((p.z - zmin) * 1000))) : '–';
+      p.dz = isFinite(p.z) ? (Math.abs(p.z - zmin) < 0.0005 ? '±0,000' : '+' + nf(p.z - zmin, 3)) : '–'; p.dzm = isFinite(p.z) ? p.z - zmin : NaN;
       p.X = p.x + R0[0]; p.Y = p.y + R0[1]; p.Z = p.z + R0[2];
       const nt = []; if (p.missing) nt.push('intradosso non trovato'); else if (p.support < 0.9) nt.push(`contatto ${Math.round(p.support * 100)}%`);
       if (p.bolts) nt.push('bulloni'); if (p.near != null && p.near > 0.1) nt.push('fuori asse irrig.'); if (p.R < 0) nt.push('reazione < 0');
@@ -1280,7 +1355,7 @@
       T([R[0] + 2, R[1] + R[3] - 13], d.sec.label, 1.6, 'ASSI'); }
 
     // ---- tabella degli appoggi
-    { const x0 = 12, top = yB1, cols = [['App.', 13], ['Concio', 44], ['Trave', 13], ['Prog. mm', 21], ['Reaz. t', 18], ['Quota rel. mm', 22], ['X m', 40], ['Y m', 40], ['Z m', 30], ['Note', 33]];
+    { const x0 = 12, top = yB1, cols = [['App.', 13], ['Concio', 44], ['Trave', 13], ['Prog. mm', 21], ['Reaz. t', 18], ['Quota rel. m', 22], ['X m', 40], ['Y m', 40], ['Z m', 30], ['Note', 33]];
       const W = cols.reduce((a, c) => a + c[1], 0);
       T([x0, top - 4], 'APPOGGI – coordinate nel sistema del modello (m), quote all\'intradosso della piattabanda', 2.2); P[P.length - 1].bold = true;
       const y0 = top - 8, ts = rowH > 3.8 ? 1.75 : 1.5;
@@ -1298,9 +1373,9 @@
     const ty = 8, th = 28; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
     T([14, ty + th - 4.5], `APPOGGI PROVVISORI A TERRA – ${d.name}`, 3.0); P[P.length - 1].bold = true;
     const notes = ['NOTA 1: quote altimetriche riferite all\'intradosso della piattabanda inferiore, in asse all\'anima.',
-      `NOTA 2: quote relative in mm, rispetto all'appoggio più basso (±0). Selle ${mm(Ls)} × ${mm(Bs)} mm (lungo l'asse × trasversale).`,
+      `NOTA 2: quote relative in m dell'intradosso della piattabanda inferiore: la più bassa è ±0,000, le altre a salire. Selle ${mm(Ls)} × ${mm(Bs)} mm (lungo l'asse × trasversale).`,
       `NOTA 3: rappresentata la trave ${d.pros.name}; schema valido anche per le altre travi.`,
-      'NOTA 4: reazioni con concio rigido su appoggi di uguale rigidezza, dal peso di calcolo di ogni concio. Valori indicativi da verificare.'];
+      (d.macro ? `NOTA 4: reazioni con il macroconcio rigido su appoggi di uguale rigidezza, peso ${nf(d.W, 2)} t. Valori indicativi da verificare.` : 'NOTA 4: reazioni con concio rigido su appoggi di uguale rigidezza, dal peso di calcolo di ogni concio. Valori indicativi da verificare.')];
     notes.forEach((t, i) => T([14, ty + th - 10 - i * 4.2], t, 1.6));
     T([252, ty + th - 5.5], d.project || '', 2.4); T([252, ty + th - 11.5], `Data ${new Date().toLocaleDateString('it-IT')} · scala 1:${SP}`, 2.0);
     T([252, ty + 2.5], 'Peso e baricentro · Appoggi a terra · Trimble Connect', 1.5);
@@ -1749,6 +1824,6 @@
     return {prism, tube, box, lug, oct};
   }
 
-  const API = {supportSetup, girderProfile, computeSupports, supportModel, placeSupports, supportReactions, buildSupportSheet, buildLugLayout, buildLugShop, lugCheck, STEELS, LUG_GEO_DEFAULT, silhouette, insertIntoIfc, buildLugSheet, lugIfc, liftModel, placeLugs, slingForces, IFC, toDxfMulti, initIfc, openIfc, meshOf, leaves, volCentroid, bboxOf, buildSheet, toPdf, toDxf, featureEdges, hiddenLine};
+  const API = {supportSetupMacro, placeSupportsMacro, supportSetup, girderProfile, computeSupports, supportModel, placeSupports, supportReactions, buildSupportSheet, buildLugLayout, buildLugShop, lugCheck, STEELS, LUG_GEO_DEFAULT, silhouette, insertIntoIfc, buildLugSheet, lugIfc, liftModel, placeLugs, slingForces, IFC, toDxfMulti, initIfc, openIfc, meshOf, leaves, volCentroid, bboxOf, buildSheet, toPdf, toDxf, featureEdges, hiddenLine};
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PBDraw = API;
 })(typeof window !== 'undefined' ? window : globalThis);

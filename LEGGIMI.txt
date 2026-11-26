@@ -67,6 +67,16 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+APPOGGI A TERRA DEL MACROCONCIO (versione 35)
+- Si sceglie il macroconcio (un baricentro del gruppo). Le travi sono tutte quelle trovate nel macroconcio.
+- I conci sono i tratti di trave (assiemi) fra un giunto e l'altro.
+- File di appoggi su tutte le travi scelte: per ogni concio a 1,50 m (modificabile) prima del giunto;
+  sul primo concio una fila in più simmetrica rispetto al suo baricentro; sull'ultimo concio una fila
+  vicino all'estremità (0,50 m se il campo è vuoto). Le file vanno sull'asse di irrigidimento più vicino.
+- "Parti dall'altra estremità" inverte il verso: il concio 1 diventa quello all'altro capo.
+- Quote relative in m all'intradosso della piattabanda inferiore: la più bassa è ±0,000, le altre a salire.
+- Reazioni con il macroconcio rigido su tutti gli appoggi.
+
 APPOGGI A TERRA DEI CONCI (versione 34)
 Pulsante "Appoggi a terra dei conci" nel gruppo: usa tutti i baricentri del
 gruppo come conci affiancati, in ordine lungo l'asse.

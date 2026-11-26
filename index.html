@@ -193,11 +193,12 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   <div class="row"><h2 class="grow">Appoggi a terra · <span id="supName"></span></h2><button class="sm" id="supClose">Chiudi</button></div>
   <div id="supState" class="note"></div>
   <div id="supForm" hidden style="display:flex;flex-direction:column;gap:7px">
+    <div class="row"><label class="f" style="flex:1">Macroconcio<select id="supMacro"></select></label><label style="align-self:end"><input type="checkbox" id="supRev"> parti dall'altra estremità</label></div>
     <div class="note" id="supConci"></div>
     <div><div class="note">Travi con gli appoggi (sotto l'anima):</div><div id="supGirders" class="row"></div></div>
     <div class="g4">
       <label class="f">Distanza dai giunti (m)<input type="text" inputmode="decimal" id="supDJ" value="1,50"></label>
-      <label class="f" title="Vuoto: appoggio simmetrico rispetto al baricentro del concio">Lato libero, dall'estremità (m)<input type="text" inputmode="decimal" id="supFree" placeholder="auto"></label>
+      <label class="f" title="Fila sull'ultimo concio, misurata dall'estremità libera">Ultimo concio, dall'estremità (m)<input type="text" inputmode="decimal" id="supFree" placeholder="0,50"></label>
       <label class="f">Sella lungo l'asse (m)<input type="text" inputmode="decimal" id="supLs" value="0,40"></label>
       <label class="f">Sella trasversale (m)<input type="text" inputmode="decimal" id="supBs" value="0,40"></label>
       <label class="f">Altezza appoggi in tavola (m)<input type="text" inputmode="decimal" id="supHs" value="0,80"></label>
@@ -208,8 +209,8 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     <div class="row"><button class="sm pri" id="supSave">Salva nel gruppo</button><button class="sm" id="supCopy">Copia coordinate</button><button class="sm" id="supCsv">Coordinate CSV</button><button class="sm" id="supReset" title="Torna alla proposta automatica">Annulla spostamenti</button></div>
     <div class="row"><b style="font-size:12px">Tavola appoggi:</b><button class="sm pri" id="supPdf">PDF</button><button class="sm" id="supDxf">DXF</button></div>
     <div id="supFiles" style="display:flex;flex-direction:column;gap:3px"></div>
-    <div class="note">Due file di appoggi per concio, sotto l'anima delle travi scelte e in asse a diaframmi o irrigidimenti. Lato giunto: al primo asse ad almeno la distanza indicata dal giunto. Lato libero: alla distanza indicata dall'estremità, oppure simmetrico rispetto al baricentro del concio. ‹ › spostano la fila all'asse precedente o successivo, ⌖ la porta sul punto cliccato nel modello.</div>
-    <div class="note">Quota Z = intradosso della piattabanda inferiore. Quota relativa in mm rispetto all'appoggio più basso. Reazioni con il concio rigido su appoggi di uguale rigidezza, dal peso di calcolo del concio (scheda del baricentro). Coordinate nel sistema del modello e in quello del gruppo (origine e rotazione del gruppo). Valori indicativi da verificare.</div>
+    <div class="note">Appoggi su tutte le travi scelte del macroconcio, sotto l'anima e in asse a diaframmi o irrigidimenti. I conci sono i tratti di trave fra un giunto e l'altro. Ogni concio ha una fila alla distanza indicata prima del giunto; il primo concio ha in più una fila simmetrica rispetto al suo baricentro; l'ultimo concio ha una fila alla distanza indicata dalla sua estremità. ‹ › spostano la fila all'asse precedente o successivo, ⌖ la porta sul punto cliccato nel modello.</div>
+    <div class="note">Quota Z = intradosso della piattabanda inferiore. Quota relativa in m dell'intradosso della piattabanda inferiore: la più bassa è +0,000, le altre a salire. Reazioni con il macroconcio rigido su appoggi di uguale rigidezza, dal peso di calcolo del concio (scheda del baricentro). Coordinate nel sistema del modello e in quello del gruppo (origine e rotazione del gruppo). Valori indicativi da verificare.</div>
   </div>
 </section>
 
@@ -232,7 +233,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=34"></script>
+<script src="draw.js?v=35"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -242,7 +243,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '34 (26/11/2026)';
+  const PB_VERSION = '35 (26/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null;
@@ -1228,34 +1229,43 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const supMsg = (t, busy) => { $('#supState').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   function cogsSig(g) { return g.cogs.map(c => c.id + ':' + c.cog.map(v => v.toFixed(3)).join(',') + ':' + c.n + ':' + (c.Wcalc || c.W)).join('|'); }
   function supStale(g) { return !!(g.sups && g.sups.sig && g.sups.sig !== cogsSig(g)); }
-  async function openSups(g) {
+  async function openSups(g, mi) {
     if (!g || !g.cogs.length) { setState('<span class="warn">Il gruppo non ha conci: salva prima un baricentro per ogni concio.</span>'); return; }
     SUP = null; $('#supBox').hidden = false; $('#supForm').hidden = true; $('#supName').textContent = g.name;
     $('#supBox').scrollIntoView({block: 'start', behavior: 'smooth'});
+    const sv0 = g.sups || {};
+    if (mi == null) { mi = g.cogs.findIndex(c => c.id === sv0.macro); if (mi < 0) mi = 0; }
+    $('#supMacro').innerHTML = g.cogs.map((c, i) => `<option value="${i}">${esc(c.name)} · ${nf(c.Wcalc || c.W / 1000, 2)} t</option>`).join(''); $('#supMacro').value = String(mi);
+    $('#supMacro').onchange = () => openSups(g, +$('#supMacro').value);
     try {
-      const parts = [];
-      for (const c of g.cogs) { supMsg(`Lettura della geometria di "${esc(c.name)}"…`, true); await tick();
-        const geo = await cogGeometry(c); parts.push({name: c.name, meshes: geo.items.map(i => i.ms), ref: geo.ref2, cog: geo.cog, W: c.Wcalc || c.W / 1000}); }
-      supMsg('Ricerca di travi, irrigidimenti e intradosso…', true); await tick();
-      const st = PBDraw.supportSetup(parts);
+      const c = g.cogs[mi]; supMsg(`Lettura della geometria di "${esc(c.name)}"…`, true); await tick();
+      const geo = await cogGeometry(c);
+      supMsg('Ricerca di travi, giunti, irrigidimenti e intradosso…', true); await tick();
+      const st = PBDraw.supportSetupMacro(geo.items.map(i => ({ms: i.ms, pid: i.part.m + ':' + i.part.g})), geo.ref2, geo.cog, c.Wcalc || c.W / 1000);
       const ord = st.lm.girders.map((gd, i) => ({i, v: gd.v})).sort((a, b) => b.v - a.v), names = {}; ord.forEach((o, k) => { names[o.i] = 'T' + (k + 1); });
-      const sv = g.sups && !supStale(g) ? g.sups : (g.sups || {});
-      SUP = {g, st, ord, names, custom: g.sups && !supStale(g) && g.sups.custom ? {...g.sups.custom} : {}};
+      const same = g.sups && !supStale(g) && g.sups.macro === c.id, sv = same ? g.sups : (g.sups || {});
+      SUP = {g, c, st, ord, names, custom: same && g.sups.custom ? {...g.sups.custom} : {}};
       $('#supDJ').value = dec(sv.dJ != null ? sv.dJ : 1.5, 2); $('#supFree').value = sv.free > 0 ? dec(sv.free, 2) : '';
+      $('#supRev').checked = !!(same && sv.rev);
       $('#supLs').value = dec(sv.Ls || 0.4, 2); $('#supBs').value = dec(sv.Bs || 0.4, 2); $('#supHs').value = dec(sv.Hs || 0.8, 2);
-      const gsel = sv.girders && sv.girders.every(i => i < ord.length) ? sv.girders : ord.map(o => o.i);
+      const gsel = same && sv.girders && sv.girders.every(i => i < ord.length) ? sv.girders : ord.map(o => o.i);
       $('#supGirders').innerHTML = ord.map((o, k) => `<label><input type="checkbox" data-sg="${o.i}" ${gsel.includes(o.i) ? 'checked' : ''}> T${k + 1} <span class="muted">(${o.v >= 0 ? 'sin.' : 'des.'} ${nf(Math.abs(o.v), 2)} m)</span></label>`).join('');
       $('#supGirders').querySelectorAll('input').forEach(el => el.onchange = computeSups);
-      $('#supConci').innerHTML = 'Conci in ordine lungo l\'asse: ' + st.conci.map(c => `<b>${esc(c.name)}</b> ${nf(c.u1 - c.u0, 2)} m · ${nf(c.W, 2)} t`).join(' → ');
+      supConciTxt();
       $('#supForm').hidden = false;
-      supMsg(`Trovate ${ord.length} travi in ${st.conci.length} conci, lunghezza totale ${nf(st.lm.length, 2)} m.` + (g.sups && supStale(g) ? ' <span class="warn">I conci sono cambiati dopo il salvataggio: gli spostamenti a mano sono stati azzerati.</span>' : ''));
+      supMsg(`Macroconcio "${esc(c.name)}": trovate ${ord.length} travi e ${st.conci.length} conci (${st.joints.length} giunti), lunghezza ${nf(st.lm.length, 2)} m, peso ${nf(st.W, 2)} t.` + (g.sups && supStale(g) ? ' <span class="warn">I conci sono cambiati dopo il salvataggio: gli spostamenti a mano sono stati azzerati.</span>' : '') + (st.conci.length < 2 ? ' <span class="warn">Non ho trovato giunti fra i tratti di trave: il macroconcio è trattato come un concio solo.</span>' : ''));
       computeSups();
     } catch (e) { supMsg('<span class="ko">Non riesco a preparare gli appoggi: ' + esc(e && e.message || e) + '</span>'); }
   }
+  function supConciTxt() { const {st} = SUP, rev = $('#supRev').checked, cs = rev ? [...st.conci].reverse() : st.conci;
+    // nomi nel verso di lavoro: Concio 1 = quello da cui si parte
+    cs.forEach((c, j) => { c.name = 'Concio ' + (j + 1); });
+    $('#supConci').innerHTML = 'Conci dal primo all\'ultimo: ' + cs.map(c => `<b>${esc(c.name)}</b> ${nf(c.u1 - c.u0, 2)} m · ≈${nf(c.W, 2)} t`).join(' → '); }
+  $('#supRev').onchange = () => { if (!SUP) return; SUP.custom = {}; supConciTxt(); computeSups(); };
   function supCfg() {
     const free = numv('#supFree');
     return {girders: [...$('#supGirders').querySelectorAll('input:checked')].map(el => +el.dataset.sg), dJ: numv('#supDJ') >= 0 ? numv('#supDJ') : 1.5, free: free > 0 ? free : null,
-      Ls: numv('#supLs') > 0 ? numv('#supLs') : 0.4, Bs: numv('#supBs') > 0 ? numv('#supBs') : 0.4, Hs: numv('#supHs') > 0 ? numv('#supHs') : 0.8, custom: SUP.custom, names: SUP.names};
+      rev: $('#supRev').checked, Ls: numv('#supLs') > 0 ? numv('#supLs') : 0.4, Bs: numv('#supBs') > 0 ? numv('#supBs') : 0.4, Hs: numv('#supHs') > 0 ? numv('#supHs') : 0.8, custom: SUP.custom, names: SUP.names};
   }
   function computeSups() {
     if (!SUP) return; const cfg = supCfg(), {st, g} = SUP;
@@ -1263,20 +1273,22 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const pts = PBDraw.computeSupports(st, cfg); SUP.pts = pts; SUP.cfg = cfg;
     pts.forEach(p => { p.rl = isFinite(p.Z) ? rel(g, [p.X, p.Y, p.Z]) : [NaN, NaN, NaN]; });
     // sezione A-A: una fila per concio e lato
-    const lines = []; pts.forEach(p => { const key = p.k + ':' + p.side; if (!lines.some(l => l.key === key)) lines.push({key, u: p.u, label: `${st.conci[p.k].name} · ${p.side ? 'fila 2' : 'fila 1'}`}); });
+    const lines = []; pts.forEach(p => { const key = p.k + ':' + p.side; if (!lines.some(l => l.key === key)) lines.push({key, u: p.u, label: `${st.conci[p.k].name} · ${p.role || (p.side ? 'fila 2' : 'fila 1')}`}); });
     const prev = $('#supSec').value; $('#supSec').innerHTML = lines.map(l => `<option value="${l.key}">${esc(l.label)}</option>`).join('');
-    $('#supSec').value = lines.some(l => l.key === prev) ? prev : (lines.find(l => l.key === '1:0') || lines[0]).key; SUP.lines = lines;
+    $('#supSec').value = lines.some(l => l.key === prev) ? prev : (lines.find(l => l.key.endsWith(':1')) || lines[0]).key; SUP.lines = lines;
     const warn = [];
-    st.conci.forEach(c => { if (c.negative) warn.push(`<span class="ko">${esc(c.name)}: una reazione è negativa, il baricentro è fuori dagli appoggi</span>`);
+    if (st.negative) warn.push('<span class="ko">una reazione è negativa: il baricentro del macroconcio è fuori dagli appoggi</span>');
+    if (st.macro && cfg.girders.length === 1 && st.misalign > 0.05) warn.push(`<span class="ko">con una sola trave il baricentro è a ${nf(st.misalign * 1000, 0)} mm dalla linea degli appoggi, il macroconcio si ribalta</span>`);
+    if (!st.macro) st.conci.forEach(c => { if (c.negative) warn.push(`<span class="ko">${esc(c.name)}: una reazione è negativa, il baricentro è fuori dagli appoggi</span>`);
       if (cfg.girders.length === 1 && c.misalign > 0.05) warn.push(`<span class="ko">${esc(c.name)}: con una sola trave il baricentro è a ${nf(c.misalign * 1000, 0)} mm dalla linea degli appoggi, il concio si ribalta</span>`); });
     if (pts.some(p => p.missing)) warn.push('<span class="ko">intradosso non trovato sotto un appoggio</span>');
     if (pts.some(p => !p.missing && p.support < 0.9)) warn.push('<span class="warn">una sella non appoggia completamente sulla piattabanda</span>');
     if (pts.some(p => p.bolts)) warn.push('<span class="warn">bulloni sotto la piattabanda nell\'impronta di una sella</span>');
     if (pts.some(p => p.near != null && p.near > 0.1)) warn.push('<span class="warn">un appoggio non è in asse a un diaframma o irrigidimento</span>');
     const zs = pts.filter(p => isFinite(p.z)).map(p => p.z), dzMax = zs.length ? (Math.max(...zs) - Math.min(...zs)) * 1000 : 0;
-    $('#supSum').innerHTML = `${pts.length} appoggi · dislivello massimo fra le selle ${nf(dzMax, 0)} mm · ` + st.conci.map(c => `${esc(c.name)} ${nf(c.W, 1)} t`).join(', ') + (warn.length ? '<br>' + warn.join(' · ') : ' · <span class="ok">✓ tutte le selle appoggiano sotto le anime</span>');
+    $('#supSum').innerHTML = `${pts.length} appoggi · dislivello massimo fra le selle ${nf(dzMax / 1000, 3)} m · peso ${nf(st.W, 2)} t · somma reazioni ${nf(pts.reduce((a, p) => a + (isFinite(p.R) ? p.R : 0), 0), 2)} t` + (warn.length ? '<br>' + warn.join(' · ') : ' · <span class="ok">✓ tutte le selle appoggiano sotto le anime</span>');
     const f3 = v => isFinite(v) ? nf(v, 3) : '–';
-    $('#supTab').innerHTML = '<tr><th>App.</th><th>Concio</th><th>Trave</th><th class="k">Reaz. t</th><th class="k">Quota rel. mm</th><th>Prog. m</th><th>X</th><th>Y</th><th>Z</th><th>X gruppo</th><th>Y gruppo</th><th>Z gruppo</th><th>Contatto</th><th>Da asse</th><th>Sposta fila</th></tr>' +
+    $('#supTab').innerHTML = '<tr><th>App.</th><th>Concio</th><th>Trave</th><th class="k">Reaz. t</th><th class="k">Quota rel. m</th><th>Prog. m</th><th>X</th><th>Y</th><th>Z</th><th>X gruppo</th><th>Y gruppo</th><th>Z gruppo</th><th>Contatto</th><th>Da asse</th><th>Sposta fila</th></tr>' +
       pts.map((p, i) => { const first = i === 0 || pts[i - 1].k !== p.k || pts[i - 1].side !== p.side, key = p.k + ':' + p.side;
         return `<tr><td>A${p.n}</td><td>${esc(st.conci[p.k].name)}</td><td>${p.g}</td><td class="k ${p.R < 0 ? 'ko' : ''}">${nf(p.R, 1)}</td><td class="k">${p.dz}</td><td>${nf(p.u - st.lm.umin, 3)}</td><td>${f3(p.X)}</td><td>${f3(p.Y)}</td><td>${f3(p.Z)}</td><td>${f3(p.rl[0])}</td><td>${f3(p.rl[1])}</td><td>${f3(p.rl[2])}</td><td class="${p.missing || p.support < 0.9 ? 'ko' : 'ok'}">${p.missing ? 'no' : nf(p.support * 100, 0) + '%'}${p.bolts ? ' · bull.' : ''}</td><td>${p.near == null ? '–' : nf(p.near * 1000, 0) + ' mm'}</td><td>${first ? `<button class="sm" data-smv="${key}" data-dir="-1" title="Asse precedente">‹</button><button class="sm" data-smv="${key}" data-dir="1" title="Asse successivo">›</button><button class="sm" data-spk="${key}" title="Clicca un punto nel modello">⌖</button>${p.moved ? ' ✎' : ''}` : ''}</td></tr>`; }).join('');
     $('#supTab').querySelectorAll('[data-smv]').forEach(b => b.onclick = () => moveSup(b.dataset.smv, +b.dataset.dir));
@@ -1302,13 +1314,13 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   $('#supClose').onclick = () => { $('#supBox').hidden = true; SUP = null; drawIcons(); };
   $('#supSave').onclick = async () => {
     if (!SUP || !SUP.pts) return; const {g, pts, cfg, st} = SUP;
-    g.sups = {t: Date.now(), sig: cogsSig(g), girders: cfg.girders, dJ: cfg.dJ, free: cfg.free, Ls: cfg.Ls, Bs: cfg.Bs, Hs: cfg.Hs, custom: {...SUP.custom},
+    g.sups = {t: Date.now(), sig: cogsSig(g), macro: SUP.c.id, rev: cfg.rev, girders: cfg.girders, dJ: cfg.dJ, free: cfg.free, Ls: cfg.Ls, Bs: cfg.Bs, Hs: cfg.Hs, custom: {...SUP.custom},
       points: pts.map(p => ({n: p.n, concio: st.conci[p.k].name, g: p.g, R: p.R, dz: p.dz, X: p.X, Y: p.Y, Z: p.Z}))};
     save(); render(); await drawIcons(); supMsg(`<span class="ok">Appoggi salvati nel gruppo "${esc(g.name)}".</span>`);
   };
   function supRows(sep) {
     const {st, pts, g} = SUP, d = (v, k) => isFinite(v) ? v.toFixed(k).replace('.', ',') : '';
-    const L = [['Appoggio', 'Concio', 'Trave', 'Progressiva (m)', 'Reazione (t)', 'Quota relativa (mm)', 'X modello', 'Y modello', 'Z modello (intradosso)', 'X gruppo', 'Y gruppo', 'Z gruppo', 'Note']];
+    const L = [['Appoggio', 'Concio', 'Trave', 'Progressiva (m)', 'Reazione (t)', 'Quota relativa (m)', 'X modello', 'Y modello', 'Z modello (intradosso)', 'X gruppo', 'Y gruppo', 'Z gruppo', 'Note']];
     pts.forEach(p => L.push(['A' + p.n, st.conci[p.k].name, p.g, d(p.u - st.lm.umin, 3), d(p.R, 2), p.dz, d(p.X, 3), d(p.Y, 3), d(p.Z, 3), d(p.rl[0], 3), d(p.rl[1], 3), d(p.rl[2], 3), p.note || '']));
     return L.map(r => r.join(sep)).join(sep === ';' ? '\r\n' : '\n');
   }
@@ -1326,9 +1338,9 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       const line = SUP.lines.find(l => l.key === $('#supSec').value) || SUP.lines[0];
       const sh = PBDraw.buildSupportSheet({meshes: st.meshes, toUV: st.lm.toUV, conci: st.conci.map(c => ({...c, zb: st.sm.bottomAt(pros.i, c.ucog).z})), sups: pts,
         girders: ord.filter(o => sel.includes(o.i)).map(o => ({gi: o.i, name: names[o.i], v: st.lm.girderAt(o.i, 0).v})), pros: {gi: pros.i, name: names[pros.i]},
-        prof: st.conci.map(c => PBDraw.girderProfile(st.lm, st.sm, pros.i, c.u0, c.u1)), Ls: cfg.Ls, Bs: cfg.Bs, Hs: cfg.Hs,
-        sec: {u: pts.find(p => p.k + ':' + p.side === line.key).u, label: line.label}, name: g.name, project: proj.name || ''});
-      const fn = safe(g.name) + '_appoggi_a_terra';
+        prof: st.conci.map(c => PBDraw.girderProfile(st.lm, st.sm, pros.i, c.u0, c.u1)), Ls: cfg.Ls, Bs: cfg.Bs, Hs: cfg.Hs, macro: !!st.macro, W: st.W,
+        sec: {u: pts.find(p => p.k + ':' + p.side === line.key).u, label: line.label}, name: SUP.c ? SUP.c.name : g.name, project: proj.name || ''});
+      const fn = safe(SUP.c ? SUP.c.name : g.name) + '_appoggi_a_terra';
       if (kind === 'pdf') { const doc = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a3'}); PBDraw.toPdf(doc, sh.prims, false); saveFileTo('#supFiles', fn + '.pdf', doc.output('blob')); }
       else saveFileTo('#supFiles', fn + '.dxf', new Blob([PBDraw.toDxf(sh.prims, sh.scale)], {type: 'application/dxf'}));
       supMsg(`Tavola degli appoggi pronta in scala 1:${sh.scale}.`);
