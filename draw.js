@@ -341,7 +341,7 @@
     g(0, 'ENDSEC'); g(0, 'EOF');
     return o.join('\r\n') + '\r\n';
   }
-  function ascii(s) { return s.replace(/°/g, '%%d').replace(/[^\x20-\x7e%]/g, ch => ({'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u', '·': '-', '×': 'x', '₀': '0', 'Ø': '%%c', '–': '-', '’': "'"}[ch] || '?')); }
+  function ascii(s) { return s.replace(/°/g, '%%d').replace(/[^\x20-\x7e%]/g, ch => ({'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u', '·': '-', '×': 'x', '₀': '0', 'Ø': '%%c', '–': '-', '−': '-', '’': "'"}[ch] || '?')); }
 
 
   // ------------------------------------------------------------------ GOLFARI
@@ -631,7 +631,7 @@
   // ------------------------------------------------------------------ VERIFICA GOLFARE EN 1993-1-8 (stesse formule del foglio MET-044_Calcolo_golfari)
   // acciaio: fy, fu per t<=40 mm, fy, fu per t>40 mm, beta_w (prospetto 4.1)
   const STEELS = {S235: [235, 360, 215, 360, 0.8], S275: [275, 430, 255, 410, 0.85], S355: [355, 510, 335, 470, 0.9], S420: [420, 520, 390, 520, 1.0], S460: [460, 540, 430, 540, 1.0]};
-  const LUG_GEO_DEFAULT = {holeAuto: false, gap: 5, L: 250, t: 20, d: 40, d0: 50, R: 75, ev: 76, as: 7, n: 2, mat: 'S355', gM0: 1.05, gM2: 1.25, gM6: 1.0, gtot: 2, pOut: 0.1, bw: 0, prep: 'fillet', bev: 45, root: 0};
+  const LUG_GEO_DEFAULT = {vside: false, hv: 30, holeAuto: false, gap: 5, L: 250, t: 20, d: 40, d0: 50, R: 75, ev: 76, as: 7, n: 2, mat: 'S355', gM0: 1.05, gM2: 1.25, gM6: 1.0, gtot: 2, pOut: 0.1, bw: 0, prep: 'fillet', bev: 45, root: 0};
   /** g: geometria in mm e materiale; F: {FEk kN (tiro caratteristico), aV gradi (fune sull'orizzontale), aH gradi (fune rispetto al piano del golfare)} */
   function lugCheck(g, F) {
     const st = STEELS[g.mat] || STEELS.S355, t = g.t, L = g.L, d = g.d, d0 = g.d0, ev = g.ev, as = g.as, n = g.n;
@@ -669,7 +669,9 @@
   function buildLugShop(g, info = {}) {
     const L = g.L, t = g.t, R = g.R, ev = g.ev, d0 = g.d0, H = ev + R, K = g.prep === 'K', root = Math.min(t, Math.max(0, g.root || 0)), bev = Math.min(80, Math.max(15, g.bev || 45));
     const hK = K ? (t - root) / 2 * Math.tan(bev * Math.PI / 180) : 0, z = K ? 0 : g.as * Math.SQRT2;
-    const S = [1, 2, 2.5, 5, 10].find(s => (L + 90) / s <= 270 && (H + 60) / s <= 150 && (t + 2 * z + 60) / s <= 80) || 10, k = 1 / S;
+    const sh = g.sh && g.sh.C ? g.sh : null, thS = (g.theta || 0) * Math.PI / 180, hv = g.vside ? Math.max(0, Math.min(+g.hv || 0, ev)) : 0;
+    const Htot = sh ? Math.max(H, ev + (sh.C + sh.D) * Math.cos(thS)) : H, Wtot = sh ? Math.max(L, 2 * ((sh.C + sh.D) * Math.sin(thS) + sh.D)) : L;
+    const S = [1, 2, 2.5, 5, 10].find(s => (Wtot + 90) / s <= 270 && (Htot + 60) / s <= 150 && (Math.max(t + 2 * z, sh ? sh.E + 2 * sh.D : 0) + 20) / s <= 100) || 10, k = 1 / S;
     const P = [];
     const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.35});
     const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.3, layer: layer || 'TESTI', align: align || 'left'});
@@ -688,19 +690,30 @@
     const ox = RF[0] + RF[2] / 2 + 10, oy = RF[1] + 30, m = (x, y) => [ox + x * k, oy + y * k];
     const C = [0, ev];
     // tangenti dagli spigoli di base alla circonferenza
-    const tang = s => { const Px = s * L / 2, dx = Px - C[0], dy = 0 - C[1], D = Math.hypot(dx, dy);
+    const tang = s => { const Px = s * L / 2, dx = Px - C[0], dy = hv - C[1], D = Math.hypot(dx, dy);
       if (D <= R) { const yy = ev - Math.sqrt(Math.max(0, R * R - (L / 2) ** 2)); return {p: [Px, yy], a: Math.atan2(yy - ev, Px) * 180 / Math.PI}; }
       const phi = Math.atan2(dy, dx), be = Math.acos(R / D), c1 = phi + be, c2 = phi - be;
       const p1 = [C[0] + R * Math.cos(c1), C[1] + R * Math.sin(c1)], p2 = [C[0] + R * Math.cos(c2), C[1] + R * Math.sin(c2)];
       const pick = s * p1[0] > s * p2[0] ? [p1, c1] : [p2, c2]; return {p: pick[0], a: pick[1] * 180 / Math.PI}; };
     const tr = tang(1), tl = tang(-1);
-    Ln(m(-L / 2, 0), m(L / 2, 0), 'CONTORNI', 0.5); Ln(m(L / 2, 0), m(...tr.p), 'CONTORNI', 0.5); Ln(m(-L / 2, 0), m(...tl.p), 'CONTORNI', 0.5);
+    Ln(m(-L / 2, 0), m(L / 2, 0), 'CONTORNI', 0.5);
+    if (hv > 0) { Ln(m(L / 2, 0), m(L / 2, hv), 'CONTORNI', 0.5); Ln(m(-L / 2, 0), m(-L / 2, hv), 'CONTORNI', 0.5); }
+    Ln(m(L / 2, hv), m(...tr.p), 'CONTORNI', 0.5); Ln(m(-L / 2, hv), m(...tl.p), 'CONTORNI', 0.5);
+    if (hv > 0) { const xq = m(L / 2, 0)[0] + 10; Ln([xq, oy - 2], [xq, m(0, hv)[1] + 2], 'QUOTE', 0.2); tick([xq, oy], Math.PI / 4); tick([xq, m(0, hv)[1]], Math.PI / 4); T([xq + 1.5, (oy + m(0, hv)[1]) / 2], nf(hv, 0), 2.4, 'QUOTE'); }
     let a0 = tr.a, a1 = tl.a; while (a1 < a0) a1 += 360; Arc(m(...C), R * k, a0, a1, 'CONTORNI', 0.5);
     Ci(m(...C), d0 / 2 * k, 'CONTORNI', 0.5);
     axis(m(-R - 12, ev), m(R + 12, ev)); axis(m(0, -10), m(0, H + 12));
+    if (sh) { // grillo visto di taglio, inclinato come la fune (linee sottili tratteggiate)
+      const ux = Math.sin(thS), uy = Math.cos(thS), pp = (r, w) => m(r * ux + w * uy, ev + r * uy - w * ux), hw = sh.D / 2, rb = sh.C + sh.D / 2;
+      dash(pp(0, -hw), pp(rb, -hw), 'FUNI', 0.25, 2, 1); dash(pp(0, hw), pp(rb, hw), 'FUNI', 0.25, 2, 1);
+      P.push({t: 'circle', c: pp(rb, 0), r: sh.D / 2 * k, layer: 'FUNI', w: 0.25}); P.push({t: 'circle', c: pp(0, 0), r: (sh.B / 2 + sh.D * 0.45) * k, layer: 'FUNI', w: 0.25});
+      const gp = sh.C - R; Ln(pp(R, 0), pp(sh.C, 0), gp > 0 ? 'QUOTE' : 'BARICENTRO', 0.6);
+      const lp = pp((R + sh.C) / 2, 0), dl = thS >= 0 ? -1 : 1, e2 = [lp[0] + dl * 22, lp[1] + 4]; Ln(lp, e2, 'QUOTE', 0.15); Ln(e2, [e2[0] + dl * 26, e2[1]], 'QUOTE', 0.15);
+      T([e2[0] + dl * 1, e2[1] + 2], `spazio fune ${nf(gp, 0)}`, 2.3, gp > 0 ? 'QUOTE' : 'BARICENTRO', dl < 0 ? 'right' : 'left'); T([e2[0] + dl * 1, e2[1] - 3.5], sh.name || 'grillo', 1.9, 'FUNI', dl < 0 ? 'right' : 'left');
+    }
     // saldature in prospetto (cordoni alla base)
     if (K) { Ln(m(-L / 2, hK), m(L / 2, hK), 'CONTORNI', 0.3); T(m(L / 2 + 4, 3), 'K', 2.4, 'QUOTE'); }
-    else { Ln(m(-L / 2 - z, 0), m(L / 2 + z, 0), 'CONTORNI', 0.25); T(m(L / 2 + z + 4, 3), `a${nf(g.as, 0)}`, 2.4, 'QUOTE'); }
+    else { Ln(m(-L / 2 - z, 0), m(L / 2 + z, 0), 'CONTORNI', 0.25); T(m(L / 2 + z + 4, -3 * S), `a${nf(g.as, 0)}`, 2.4, 'QUOTE'); }
     // quote
     hd(m(-L / 2, 0)[0], m(L / 2, 0)[0], oy - 14, oy - 1, `L = ${nf(L, 0)}`);
     vd(oy, m(0, ev)[1], m(-L / 2, 0)[0] - 10, m(-R, ev)[0] - 2, `ev = ${nf(ev, 0)}`);
@@ -742,6 +755,10 @@
       const a = sm(s * t / 2, hK), b = sm(s * root / 2, 0), c = sm(s * (t / 2 + hK * 0.35), 0); Ln(a, c, 'CONTORNI', 0.35);
       for (let f = 0.15; f < 1; f += 0.15) { const y = hK * f, x0 = root / 2 + (t - root) / 2 * f, x1 = t / 2 + hK * 0.35 * (1 - f); Ln(sm(s * x0, y), sm(s * x1, y), 'CONTORNI', 0.1); } });
     else [-1, 1].forEach(s => { if (g.n < 2 && s < 0) return; const a = sm(s * t / 2, z), b = sm(s * (t / 2 + z), 0), c = sm(s * t / 2, 0); Ln(a, b, 'CONTORNI', 0.35); Ln(b, c, 'CONTORNI', 0.35); Ln(c, a, 'CONTORNI', 0.35); });
+    if (sh) { const xa = sh.A / 2 + sh.D / 2, xe = sh.E / 2 + sh.D / 2, yb = ev + sh.C - sh.E / 2;
+      [-1, 1].forEach(q => dash(sm(q * xa, ev), sm(q * xe, yb), 'FUNI', 0.25, 2, 1));
+      for (let a = 0; a < 180; a += 12) { const a0 = a * Math.PI / 180, a1 = Math.min(180, a + 12) * Math.PI / 180; Ln(sm(xe * Math.cos(a0), yb + xe * Math.sin(a0)), sm(xe * Math.cos(a1), yb + xe * Math.sin(a1)), 'FUNI', 0.25); }
+      Ln(sm(-xa - sh.D, ev), sm(xa + sh.D, ev), 'FUNI', 0.25); }
     hd(sm(-t / 2, 0)[0], sm(t / 2, 0)[0], m(0, H)[1] + 8, m(0, H)[1] + 1, `t = ${nf(t, 0)}`);
     if (K) { const p = sm(t / 2, hK * 0.5), e = [p[0] + 12, p[1] + 16]; Ln(p, e, 'QUOTE', 0.2); Ln(e, [e[0] + 30, e[1]], 'QUOTE', 0.2); T([e[0] + 1, e[1] + 2], `K  ${nf(bev, 0)}°  c ${nf(root, 0)}`, 2.4, 'QUOTE'); T([e[0] + 1, e[1] - 3.5], 'piena penetrazione', 2.0, 'QUOTE');
       vd(oy, sm(0, hK)[1], sm(-t / 2, 0)[0] - 8, sm(-t / 2, 0)[0] - 1, nf(hK, 0)); }
@@ -762,6 +779,8 @@
     note(`Foro Ø ${nf(d0, 1)} mm per perno Ø ${nf(g.d, 1)} mm${info.shackle ? ' (' + info.shackle + ')' : ''}`); if (g.holeAuto) note('Foro dimensionato sul grillo maggiore');
     if (K) { note(`Doppio cianfrino a V (K): angolo ${nf(bev, 0)}°, spalla c = ${nf(root, 0)} mm,`); note(`altezza cianfrino ${nf(hK, 1)} mm; saldatura a piena penetrazione`); }
     else { note(`Saldatura a cordone d'angolo a = ${nf(g.as, 0)} mm,`); note(`${g.n >= 2 ? 'sui due lati' : 'su un lato'}, per tutta la lunghezza L`); }
+    if (hv > 0) note(`Tratto verticale ai lati: ${nf(hv, 0)} mm`);
+    if (sh) note(`Grillo: ${sh.name || ''} · spazio per la fune C - R = ${nf(sh.C - R, 0)} mm`);
     if (info.count) note(`Quantità: ${info.count} pezzi`);
     if (info.ecMax != null) note(`Verifica EN 1993-1-8: rapporto max ${nf(info.ecMax, 2)} ${info.ecMax <= 1 ? '(OK)' : '(NON VERIFICATO)'}`);
     note('Quote in mm');
