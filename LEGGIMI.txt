@@ -67,8 +67,28 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+APPOGGI A TERRA DEI CONCI (versione 34)
+Pulsante "Appoggi a terra dei conci" nel gruppo: usa tutti i baricentri del
+gruppo come conci affiancati, in ordine lungo l'asse.
+  - Due file di appoggi per concio, sotto l'anima delle travi scelte, in
+    asse a diaframmi o irrigidimenti.
+  - Lato giunto: primo asse ad almeno la distanza indicata dal giunto
+    (default 1,50 m). Lato libero: distanza dall'estremità, oppure
+    simmetrico rispetto al baricentro del concio.
+  - Quota di ogni sella = intradosso della piattabanda inferiore; quote
+    relative in mm rispetto all'appoggio più basso.
+  - Reazioni: concio rigido su appoggi di uguale rigidezza, peso di calcolo
+    della scheda.
+  - Tavola A3 PDF/DXF: prospetto della trave esterna con i conci colorati e
+    i baricentri, sezione A-A su una fila, pianta 1-1 dall'alto, pianta 2-2
+    dell'intradosso, tabella con coordinate e reazioni.
+  - Coordinate: copia per Excel o file CSV (modello e sistema del gruppo).
+  - "Salva nel gruppo" condivide gli appoggi con i colleghi; i segni
+    compaiono nel modello 3D.
+Aggiornamento: caricare su GitHub index.html, draw.js e sup.png.
+
 FILE
 index.html   pannello dell'estensione
 draw.js      lettura IFC, viste, PDF e DXF
 tcwapi.js    Trimble Connect Workspace API 0.3.38 (libreria ufficiale)
-manifest.json, icon.png, cog.png, cog-0..cog-5.png (segni colorati dei gruppi)
+manifest.json, icon.png, cog.png, cog-0..cog-5.png (segni colorati dei gruppi), lug.png, sup.png (segni di golfari e appoggi)

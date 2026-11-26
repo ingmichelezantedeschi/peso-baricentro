@@ -296,7 +296,7 @@
   function wrap(s, n) { const out = []; let cur = ''; s.split(', ').forEach(w => { if ((cur + ', ' + w).length > n && cur) { out.push(cur + ','); cur = w; } else cur = cur ? cur + ', ' + w : w; }); if (cur) out.push(cur); return out; }
 
   // ------------------------------------------------------------------ PDF
-  const LW = {FUNI: [214, 0, 147], GOLFARI: [180, 120, 0], ASSI: [120, 120, 120], CONTORNI: [0, 0, 0], VISTA_3D: [40, 40, 40], QUOTE: [0, 90, 160], BARICENTRO: [200, 30, 30], ORIGINE: [0, 130, 60], TESTI: [20, 20, 20], CORNICE: [0, 0, 0], SEZIONI: [0, 140, 60], TAGLIO: [0, 0, 0]};
+  const LW = {FUNI: [214, 0, 147], GOLFARI: [180, 120, 0], ASSI: [120, 120, 120], CONTORNI: [0, 0, 0], VISTA_3D: [40, 40, 40], QUOTE: [0, 90, 160], BARICENTRO: [200, 30, 30], ORIGINE: [0, 130, 60], TESTI: [20, 20, 20], CORNICE: [0, 0, 0], SEZIONI: [0, 140, 60], TAGLIO: [0, 0, 0], APPOGGI: [60, 60, 60], CONCI: [120, 120, 120]};
   function toPdf(doc, prims, addPage) {
     if (addPage) doc.addPage('a3', 'landscape');
     const Hh = 297, Y = y => Hh - y;
@@ -311,6 +311,9 @@
         doc.lines(lines, pts[0][0], pts[0][1], [1, 1], 'F', true);
       } else if (p.t === 'arc') { doc.setDrawColor(...c); doc.setLineWidth(p.w || 0.25); const n = Math.max(8, Math.ceil(Math.abs(p.a1 - p.a0) / 4)); let q = null;
         for (let i = 0; i <= n; i++) { const a = (p.a0 + (p.a1 - p.a0) * i / n) * Math.PI / 180, r = [p.c[0] + p.r * Math.cos(a), Y(p.c[1] + p.r * Math.sin(a))]; if (q) doc.line(q[0], q[1], r[0], r[1]); q = r; }
+      } else if (p.t === 'poly') { if (p.pts.length < 3) continue; doc.setFillColor(...(p.fill || c)); const q = p.pts.map(a => [a[0], Y(a[1])]), lines = [];
+        for (let i = 1; i < q.length; i++) lines.push([q[i][0] - q[i - 1][0], q[i][1] - q[i - 1][1]]);
+        doc.lines(lines, q[0][0], q[0][1], [1, 1], 'F', true);
       } else if (p.t === 'image') { try { doc.addImage(p.data, 'PNG', p.p[0], Y(p.p[1] + p.h), p.w, p.h); } catch (e) {}
       } else if (p.t === 'tbox') { // sfondo bianco sotto un testo
         doc.setFont('helvetica', p.bold === false ? 'normal' : 'bold'); doc.setFontSize(p.s / 0.3528); const w = doc.getTextWidth(p.txt), pd = p.s * 0.35;
@@ -320,7 +323,7 @@
   }
 
   // ------------------------------------------------------------------ DXF (R12, unità = mm reali per le viste in scala)
-  const DXFCOL = {FUNI: 6, GOLFARI: 2, ASSI: 8, CONTORNI: 7, VISTA_3D: 8, QUOTE: 4, BARICENTRO: 1, ORIGINE: 3, TESTI: 7, CORNICE: 7, SEZIONI: 3, TAGLIO: 7};
+  const DXFCOL = {FUNI: 6, GOLFARI: 2, ASSI: 8, CONTORNI: 7, VISTA_3D: 8, QUOTE: 4, BARICENTRO: 1, ORIGINE: 3, TESTI: 7, CORNICE: 7, SEZIONI: 3, TAGLIO: 7, APPOGGI: 8, CONCI: 9};
   function toDxf(prims, S) { return toDxfMulti([{prims, S}]); }
   function toDxfMulti(sheets) {
     const o = [];
@@ -340,6 +343,9 @@
       else if (p.t === 'sector') {
         for (let a = p.a0; a < p.a1; a += 15) { const b = Math.min(a + 15, p.a1), q = [p.c, [p.c[0] + p.r * Math.cos(a * Math.PI / 180), p.c[1] + p.r * Math.sin(a * Math.PI / 180)], [p.c[0] + p.r * Math.cos(b * Math.PI / 180), p.c[1] + p.r * Math.sin(b * Math.PI / 180)]];
           g(0, 'SOLID'); g(8, p.layer); g(10, fx(q[0][0])); g(20, f(q[0][1])); g(30, 0); g(11, fx(q[1][0])); g(21, f(q[1][1])); g(31, 0); g(12, fx(q[2][0])); g(22, f(q[2][1])); g(32, 0); g(13, fx(q[2][0])); g(23, f(q[2][1])); g(33, 0); }
+      } else if (p.t === 'poly' && p.layer !== 'CONCI') { // campitura: contorno chiuso (POLYLINE)
+        g(0, 'POLYLINE'); g(8, p.layer); g(66, 1); g(70, 1); g(10, 0); g(20, 0); g(30, 0);
+        p.pts.forEach(q => { g(0, 'VERTEX'); g(8, p.layer); g(10, fx(q[0])); g(20, f(q[1])); g(30, 0); }); g(0, 'SEQEND'); g(8, p.layer);
       } else if (p.t === 'text') {
         const al = p.align === 'center' ? 1 : p.align === 'right' ? 2 : 0;
         g(0, 'TEXT'); g(8, p.layer); g(10, fx(p.p[0])); g(20, f(p.p[1] - p.s * 0.35)); g(30, 0); g(40, f(p.s * 0.75)); g(1, ascii(p.txt));
@@ -480,7 +486,7 @@
       return {gi, u, v, x: xy[0], y: xy[1], z, d: Math.hypot(u, v), support: tot ? ok / tot : 0, el: main >= 0 ? els[main].m : null, studs, missing: !!g.missing};
     }
     const L = U1 - U0;
-    return {ax, pv, girders: g0, stations, pointAt, girderAt, strips, length: L, umin: U0, umax: U1, cell, _dbg: {zt, NU, NV, U0, V0, els}};
+    return {ax, pv, girders: g0, stations, pointAt, girderAt, strips, length: L, umin: U0, umax: U1, cell, toUV, fromUV, cogR, _dbg: {zt, NU, NV, U0, V0, els}};
   }
 
   /** propone i golfari: n = 2 o 4; girders = indici delle travi; R = distanza imposta (null = automatico sugli assi) */
@@ -547,6 +553,156 @@
   }
   function solve3(M, r) { const det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
     const D0 = det(M); if (Math.abs(D0) < 1e-12) return null; return [0, 1, 2].map(c => det(M.map((row, i) => row.map((v, j) => j === c ? r[i] : v))) / D0); }
+
+  // ------------------------------------------------------------------ APPOGGI PROVVISORI A TERRA (premontaggio dei conci)
+  /**
+   * Intradosso del macroconcio sulla stessa griglia di liftModel: quota minima delle facce orizzontali.
+   * Dà la piattabanda inferiore sotto l'anima di ogni trave e il punto di appoggio (sella) con la verifica del contatto.
+   */
+  function supportModel(lm) {
+    const {U0, V0, NU, NV, els} = lm._dbg, cell = lm.cell, toUV = lm.toUV;
+    const gu = u => (u - U0) / cell, gv = v => (v - V0) / cell;
+    const zb = new Float32Array(NU * NV).fill(Infinity);
+    els.forEach(e => {
+      if (e.small) return; const p = e.m.pos, ix = e.m.idx;
+      for (let t = 0; t < ix.length; t += 3) {
+        const a = ix[t] * 3, b = ix[t + 1] * 3, c = ix[t + 2] * 3;
+        const e1 = [p[b] - p[a], p[b + 1] - p[a + 1], p[b + 2] - p[a + 2]], e2 = [p[c] - p[a], p[c + 1] - p[a + 1], p[c + 2] - p[a + 2]];
+        const nz = e1[0] * e2[1] - e1[1] * e2[0], nl = Math.hypot(e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], nz);
+        if (!nl || Math.abs(nz) / nl < 0.7) continue;
+        const A = toUV(p[a], p[a + 1]), B = toUV(p[b], p[b + 1]), C = toUV(p[c], p[c + 1]);
+        const x0 = gu(A[0]), y0 = gv(A[1]), x1 = gu(B[0]), y1 = gv(B[1]), x2 = gu(C[0]), y2 = gv(C[1]);
+        const area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0); if (Math.abs(area) < 1e-9) continue;
+        const za = p[a + 2], zb2 = p[b + 2], zc = p[c + 2];
+        for (let y = Math.max(0, Math.floor(Math.min(y0, y1, y2))); y <= Math.min(NV - 1, Math.ceil(Math.max(y0, y1, y2))); y++)
+          for (let x = Math.max(0, Math.floor(Math.min(x0, x1, x2))); x <= Math.min(NU - 1, Math.ceil(Math.max(x0, x1, x2))); x++) {
+            const w0 = ((x1 - x) * (y2 - y) - (x2 - x) * (y1 - y)) / area, w1 = ((x2 - x) * (y0 - y) - (x0 - x) * (y2 - y)) / area, w2 = 1 - w0 - w1;
+            if (w0 < -0.02 || w1 < -0.02 || w2 < -0.02) continue;
+            const z = w0 * za + w1 * zb2 + w2 * zc, k = x * NV + y; if (z < zb[k]) zb[k] = z;
+          }
+      }
+    });
+    // profilo trasversale dell'intradosso alla progressiva u (mediana su 5 colonne: toglie bulloni e piccoli pezzi)
+    function row(u) {
+      const xc = Math.round(gu(u)); if (xc < 0 || xc >= NU) return null;
+      const zr = new Float32Array(NV), col = [];
+      for (let y = 0; y < NV; y++) { col.length = 0; for (let x = Math.max(0, xc - 2); x <= Math.min(NU - 1, xc + 2); x++) col.push(zb[x * NV + y]); col.sort((a, b) => a - b); zr[y] = col[Math.floor(col.length / 2)]; }
+      return zr;
+    }
+    // piattabande inferiori: tratti piani più bassi di quanto c'è ai lati, larghi 0,15–1,6 m
+    function flanges(u) {
+      const zr = row(u); if (!zr) return [];
+      const runs = []; let s = 0;
+      for (let y = 1; y <= NV; y++) {
+        const brk = y === NV || isFinite(zr[y]) !== isFinite(zr[s]) || (isFinite(zr[y]) && Math.abs(zr[y] - zr[y - 1]) > 0.015);
+        if (brk) { let zm = Infinity; for (let k = s; k < y; k++) zm = Math.min(zm, zr[k]); runs.push({s, e: y - 1, z: zm}); s = y; }
+      }
+      const merged = [];
+      runs.filter(r => isFinite(r.z)).forEach(r => { const l = merged[merged.length - 1]; if (l && r.s - l.e <= 3 && Math.abs(r.z - l.z) < 0.03) { l.e = r.e; l.z = Math.min(l.z, r.z); } else merged.push({...r}); });
+      const out = [];
+      merged.forEach(r => {
+        const w = (r.e - r.s + 1) * cell; if (w < 0.15 || w > 1.6) return;
+        let left = Infinity, right = Infinity;
+        for (let k = Math.max(0, r.s - 6); k < r.s; k++) left = Math.min(left, zr[k]);
+        for (let k = r.e + 1; k <= Math.min(NV - 1, r.e + 6); k++) right = Math.min(right, zr[k]);
+        if (left < r.z + 0.05 || right < r.z + 0.05) return;
+        out.push({v: V0 + ((r.s + r.e) / 2) * cell, w, z: r.z});
+      });
+      return out;
+    }
+    const cache = new Map();
+    /** piattabanda inferiore della trave gi alla progressiva u (la più vicina all'asse dell'anima) */
+    function bottomAt(gi, u) {
+      const key = gi + ':' + Math.round(u / cell); if (cache.has(key)) return cache.get(key);
+      const g = lm.girderAt(gi, u); let best = null;
+      flanges(u).forEach(f => { const d = Math.abs(f.v - g.v); if (d < f.w / 2 + 0.3 && (!best || d < Math.abs(best.v - g.v))) best = f; });
+      const r = best ? {v: best.v, w: best.w, z: best.z, web: g.v, top: g.z, missing: false} : {v: g.v, w: g.w, z: NaN, web: g.v, top: g.z, missing: true};
+      cache.set(key, r); return r;
+    }
+    /** appoggio sotto l'anima della trave gi alla progressiva u: sella Ls (lungo l'asse) × Bs (trasversale) */
+    function pointBelow(gi, u, Ls = 0.4, Bs = 0.4) {
+      let b = bottomAt(gi, u);
+      if (b.missing) for (const du of [0.1, -0.1, 0.2, -0.2]) { const q = bottomAt(gi, u + du); if (!q.missing) { b = q; break; } }
+      const v = b.web;
+      let tot = 0, ok = 0;
+      for (let du = -Ls / 2; du <= Ls / 2 + 1e-9; du += cell) for (let dv = -Bs / 2; dv <= Bs / 2 + 1e-9; dv += cell) {
+        const x = Math.round(gu(u + du)), y = Math.round(gv(v + dv)); tot++;
+        if (x < 0 || y < 0 || x >= NU || y >= NV) continue;
+        if (Math.abs(zb[x * NV + y] - b.z) < 0.02) ok++;
+      }
+      // bulloni (teste, dadi) sotto la piattabanda nell'impronta della sella
+      let bolts = 0;
+      els.forEach(e => { if (!e.small) return; const uc = (e.u0 + e.u1) / 2, vc = (e.v0 + e.v1) / 2;
+        if (Math.abs(uc - u) < Ls / 2 + 0.03 && Math.abs(vc - v) < Bs / 2 + 0.03 && e.z0 < b.z + 0.03 && e.z1 > b.z - 0.2) bolts++; });
+      const xy = lm.fromUV(u, v);
+      return {gi, u, v, x: xy[0], y: xy[1], z: b.z, bf: {v: b.v, w: b.w}, top: b.top, support: tot ? ok / tot : 0, bolts, missing: b.missing};
+    }
+    return {bottomAt, pointBelow, flanges};
+  }
+
+  /**
+   * Appoggi dei conci affiancati: due file per concio, sotto le anime delle travi scelte, in asse ai diaframmi/irrigidimenti.
+   * conci: [{u0, u1, ucog}] in ordine lungo l'asse. Lato giunto: a dJ dal giunto. Lato libero: a 'free' m dall'estremità,
+   * oppure (free vuoto) simmetrico rispetto al baricentro del concio; concio isolato: a 0,21 L dalle estremità.
+   * custom['k:lato'] = progressiva imposta per quella fila (spostamenti a mano).
+   */
+  function placeSupports(lm, sm, conci, cfg) {
+    const gs = cfg.girders, dJ = cfg.dJ != null ? cfg.dJ : 1.5, Ls = cfg.Ls || 0.4, Bs = cfg.Bs || 0.4, out = [];
+    const stIn = (gi, c) => lm.stations[gi].map(s => s.u).filter(u => u > c.u0 + 0.2 && u < c.u1 - 0.2);
+    const nearest = (arr, u) => arr.reduce((b, x) => b == null || Math.abs(x - u) < Math.abs(b - u) ? x : b, null);
+    // fila sugli assi comuni alle travi: costo = distanza dal punto voluto + disallineamento fra le travi
+    const snap = (t, c, lo = -Infinity, hi = Infinity) => {
+      const cand = []; gs.forEach(gi => stIn(gi, c).forEach(u => { if (u >= lo && u <= hi) cand.push(u); }));
+      if (!cand.length) return {u: Math.max(lo, Math.min(hi, t)), snapped: false};
+      let best = null, bc = Infinity;
+      cand.forEach(u => { let cost = Math.abs(u - t); gs.forEach(gi => { const n = nearest(stIn(gi, c), u); cost += 2 * Math.min(n == null ? 0.5 : Math.abs(n - u), 0.5); }); if (cost < bc) { bc = cost; best = u; } });
+      return {u: best, snapped: true};
+    };
+    conci.forEach((c, k) => {
+      const L = c.u1 - c.u0, jl = k > 0, jr = k < conci.length - 1, lines = [null, null], tg = [null, null];
+      const fixed = side => cfg.custom && cfg.custom[k + ':' + side] != null ? cfg.custom[k + ':' + side] : null;
+      // lato giunto: a dJ dal giunto, mai più vicino (spazio per il giunto di montaggio)
+      if (jl) { tg[0] = c.u0 + dJ; lines[0] = fixed(0) != null ? {u: fixed(0)} : snap(tg[0], c, c.u0 + dJ - 0.02, c.ucog - 0.3); }
+      if (jr) { tg[1] = c.u1 - dJ; lines[1] = fixed(1) != null ? {u: fixed(1)} : snap(tg[1], c, c.ucog + 0.3, c.u1 - dJ + 0.02); }
+      // lato libero: distanza imposta dall'estremità, oppure simmetrico rispetto al baricentro (concio isolato: 0,21 L)
+      [0, 1].forEach(side => { if (lines[side]) return;
+        const other = lines[1 - side];
+        let t = cfg.free > 0 ? (side ? c.u1 - cfg.free : c.u0 + cfg.free) : other ? 2 * c.ucog - other.u : (side ? c.u1 - 0.21 * L : c.u0 + 0.21 * L);
+        t = side ? Math.min(c.u1 - 0.3, Math.max(t, c.ucog + 0.3)) : Math.max(c.u0 + 0.3, Math.min(t, c.ucog - 0.3)); tg[side] = t;
+        lines[side] = fixed(side) != null ? {u: fixed(side)} : side ? snap(t, c, c.ucog + 0.3) : snap(t, c, -Infinity, c.ucog - 0.3); });
+      [0, 1].forEach(side => {
+        const t = tg[side], forced = fixed(side), line = lines[side];
+        gs.forEach(gi => {
+          const st = stIn(gi, c); let u = line.u;
+          if (forced == null) { const okJ = x => !(side === 0 && jl && x < c.u0 + dJ - 0.02) && !(side === 1 && jr && x > c.u1 - dJ + 0.02);
+            const n = nearest(st.filter(okJ), line.u); if (n != null && Math.abs(n - line.u) < 0.3) u = n; }
+          const p = sm.pointBelow(gi, u, Ls, Bs);
+          p.near = st.length ? Math.min(...st.map(s => Math.abs(s - u))) : null;
+          out.push({...p, k, side, target: t, moved: forced != null});
+        });
+      });
+    });
+    return out;
+  }
+
+  /**
+   * Reazioni degli appoggi di un concio rigido su appoggi di uguale rigidezza: R = a + b·du + c·dv,
+   * con ΣR = W e momenti nulli attorno al baricentro (du, dv dal baricentro). Appoggi allineati: si risolve lungo la linea.
+   */
+  function supportReactions(pts, W, uc, vc) {
+    const du = pts.map(p => p.u - uc), dv = pts.map(p => p.v - vc), n = pts.length, S = a => a.reduce((s, x) => s + x, 0);
+    const M = [[n, S(du), S(dv)], [S(du), S(du.map(x => x * x)), S(du.map((x, i) => x * dv[i]))], [S(dv), S(du.map((x, i) => x * dv[i])), S(dv.map(x => x * x))]];
+    let R = null, misalign = 0;
+    const sol = n >= 3 ? solve3(M, [W, 0, 0]) : null;
+    if (sol) R = du.map((x, i) => sol[0] + sol[1] * x + sol[2] * dv[i]);
+    else { // appoggi su una linea: equilibrio lungo la linea, il baricentro deve stare sulla linea
+      const a = pts[0], b = pts[n - 1], ex = b.u - a.u, ey = b.v - a.v, el = Math.hypot(ex, ey) || 1, t = [ex / el, ey / el];
+      const ds = pts.map((p, i) => du[i] * t[0] + dv[i] * t[1]), s1 = S(ds), s2 = S(ds.map(x => x * x)), det = n * s2 - s1 * s1;
+      R = Math.abs(det) > 1e-9 ? ds.map(x => (W * s2 - W * s1 * x) / det) : pts.map(() => W / n);
+      misalign = Math.abs((uc - a.u) * ey - (vc - a.v) * ex) / el;
+    }
+    return {R, misalign, negative: R.some(r => r < 0)};
+  }
 
   // ------------------------------------------------------------------ SAGOMA ESTERNA (solo contorno)
   /** Proiezione con la sola sagoma esterna: impronta dei pezzi riempita, contorno esterno semplificato. Stesso formato di hiddenLine. */
@@ -957,6 +1113,201 @@
     T([252, ty + 2.5], 'Peso e baricentro · Golfari · Trimble Connect', 1.5);
     logos(P, ty);
     return {prims: P, scale: SP};
+  }
+
+  /**
+   * Unisce i conci del gruppo (ognuno letto col suo riferimento) in un unico riferimento R0 e prepara travi, assi e intradosso.
+   * parts: [{name, meshes (rel. ref), ref, cog (assoluto), W (t)}]. I conci tornano ordinati lungo l'asse.
+   */
+  function supportSetup(parts) {
+    const R0 = parts[0].ref, meshes = [], owner = [];
+    parts.forEach((p, k) => { const o = [0, 1, 2].map(i => p.ref[i] - R0[i]);
+      p.meshes.forEach(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { q[i] = m.pos[i] + o[0]; q[i + 1] = m.pos[i + 1] + o[1]; q[i + 2] = m.pos[i + 2] + o[2]; } meshes.push({...m, pos: q}); owner.push(k); }); });
+    // origine delle progressive sul baricentro del concio più pesante: mai su un giunto, dove la piattabanda è interrotta o coperta dai coprigiunti
+    const big = parts.reduce((b, p) => p.W > b.W ? p : b, parts[0]), cogR = [0, 1, 2].map(i => big.cog[i] - R0[i]);
+    const lm = liftModel(meshes, cogR, {});
+    if (!lm.girders.length) throw new Error('nessuna trave riconosciuta nei conci del gruppo');
+    const sm = supportModel(lm);
+    const conci = parts.map((p, k) => { let u0 = Infinity, u1 = -Infinity;
+      lm._dbg.els.forEach(e => { if (owner[e.i] !== k || e.small) return; u0 = Math.min(u0, e.u0); u1 = Math.max(u1, e.u1); });
+      const cu = lm.toUV(p.cog[0] - R0[0], p.cog[1] - R0[1]);
+      return {src: k, name: p.name, W: p.W, u0, u1, ucog: cu[0], vcog: cu[1], zcog: p.cog[2] - R0[2]}; }).sort((a, b) => (a.u0 + a.u1) - (b.u0 + b.u1));
+    return {R0, meshes, owner, lm, sm, conci};
+  }
+  /** sagoma della trave gi fra u0 e u1: [u, quota estradosso, quota intradosso] */
+  function girderProfile(lm, sm, gi, u0, u1) {
+    const out = [], n = Math.max(2, Math.ceil((u1 - u0) / 0.25));
+    for (let i = 0; i <= n; i++) { const u = u0 + 0.02 + (u1 - u0 - 0.04) * i / n, b = sm.bottomAt(gi, u); if (!b.missing && isFinite(b.top)) out.push([u, b.top, b.z]); }
+    return out;
+  }
+  /**
+   * Appoggi completi: posizione, reazioni per concio, quote relative, coordinate assolute.
+   * cfg: {girders, dJ, free, Ls, Bs, custom, names: {gi: 'T1'}}
+   */
+  function computeSupports(st, cfg) {
+    const {lm, sm, conci, R0} = st, pts = placeSupports(lm, sm, conci, cfg);
+    const warn = [];
+    conci.forEach((c, k) => { const ps = pts.filter(p => p.k === k), ok = ps.filter(p => isFinite(p.z));
+      const r = supportReactions(ps, c.W, c.ucog, c.vcog); ps.forEach((p, i) => { p.R = r.R[i]; });
+      c.misalign = r.misalign; c.negative = r.negative; });
+    const zmin = Math.min(...pts.filter(p => isFinite(p.z)).map(p => p.z));
+    pts.forEach(p => { p.g = (cfg.names || {})[p.gi] || 'T' + (p.gi + 1); });
+    pts.sort((a, b) => a.k - b.k || a.side - b.side || a.g.localeCompare(b.g, 'it', {numeric: true}));
+    pts.forEach((p, i) => { p.n = i + 1;
+      p.dz = isFinite(p.z) ? (Math.abs(p.z - zmin) < 0.0005 ? '±0' : String(Math.round((p.z - zmin) * 1000))) : '–';
+      p.X = p.x + R0[0]; p.Y = p.y + R0[1]; p.Z = p.z + R0[2];
+      const nt = []; if (p.missing) nt.push('intradosso non trovato'); else if (p.support < 0.9) nt.push(`contatto ${Math.round(p.support * 100)}%`);
+      if (p.bolts) nt.push('bulloni'); if (p.near != null && p.near > 0.1) nt.push('fuori asse irrig.'); if (p.R < 0) nt.push('reazione < 0');
+      p.note = nt.join(', '); });
+    return pts;
+  }
+
+  // ------------------------------------------------------------------ TAVOLA DEGLI APPOGGI A TERRA
+  /**
+   * Prospetto della trave esterna con i conci e i loro baricentri, sezione A-A su una fila di appoggi,
+   * pianta 1-1 (dall'alto) e 2-2 (intradosso), tabella con coordinate e reazioni.
+   * d = {meshes (rel. ref), toUV (x,y rel. ref → u,v), conci:[{name, u0, u1, ucog, zcog, zb, W}],
+   *      sups:[{n, k, gi, g, u, v, z, R, dz, X, Y, Z}], girders:[{gi, name, v}], pros:{gi, name}, prof:[[[u, ztop, zbot]...] per concio],
+   *      Ls, Bs, Hs, sec:{u, label}, name, project}
+   */
+  function buildSupportSheet(d) {
+    const local = d.meshes.filter(m => !isMinute(m)).map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s = d.toUV(m.pos[i], m.pos[i + 1]); q[i] = s[0]; q[i + 1] = s[1]; q[i + 2] = m.pos[i + 2]; } return {pos: q, idx: m.idx}; });
+    let U0 = Infinity, U1 = -Infinity, V0 = Infinity, V1 = -Infinity, Z1 = -Infinity;
+    local.forEach(m => { for (let i = 0; i < m.pos.length; i += 3) { const u = m.pos[i], v = m.pos[i + 1], z = m.pos[i + 2]; if (u < U0) U0 = u; if (u > U1) U1 = u; if (v < V0) V0 = v; if (v > V1) V1 = v; if (z > Z1) Z1 = z; } });
+    const sups = d.sups.filter(s => isFinite(s.z)), Ls = d.Ls, Bs = d.Bs;
+    const zLow = Math.min(...sups.map(s => s.z)), zG = zLow - d.Hs;
+    const P = [];
+    const Ln = (a, b, layer, w) => P.push({t: 'line', a, b, layer: layer || 'CONTORNI', w: w || 0.25});
+    const T = (p, txt, size, layer, align) => P.push({t: 'text', p, txt: String(txt), s: (size || 2.5) * 1.4, layer: layer || 'TESTI', align: align || 'left'});
+    const TB = (p, txt, size, layer, align) => { P.push({t: 'tbox', p, txt: String(txt), s: size * 1.4, layer: layer || 'SEZIONI', align: align || 'left'}); T(p, txt, size, layer || 'SEZIONI', align); P[P.length - 1].bold = true; };
+    const rect = (x, y, w, h, layer, wt) => { Ln([x, y], [x + w, y], layer, wt); Ln([x + w, y], [x + w, y + h], layer, wt); Ln([x + w, y + h], [x, y + h], layer, wt); Ln([x, y + h], [x, y], layer, wt); };
+    const poly = (pts, fill, layer) => P.push({t: 'poly', pts, fill, layer: layer || 'APPOGGI'});
+    const box = (xa, ya, xb, yb, fill, layer, wt) => { const q = [[xa, ya], [xb, ya], [xb, yb], [xa, yb]]; if (fill) poly(q, fill, layer); q.forEach((p, i) => Ln(p, q[(i + 1) % 4], layer || 'APPOGGI', wt || 0.35)); };
+    const dashed = (a, b, layer, w) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.floor(L / 4)); for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 0.6) / n; Ln([a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1], layer || 'ASSI', w || 0.13); } };
+    const tick = p => Ln([p[0] - 0.8, p[1] - 0.8], [p[0] + 0.8, p[1] + 0.8], 'QUOTE', 0.3);
+    const hd = (xa, xb, y, txt) => { Ln([xa - 1.2, y], [xb + 1.2, y], 'QUOTE', 0.18); tick([xa, y]); tick([xb, y]); if (txt) T([(xa + xb) / 2, y + 1.3], txt, 1.8, 'QUOTE', 'center'); };
+    const chain = (xs, y, ext) => { xs = [...xs].sort((a, b) => a.x - b.x).filter((q, i, a) => i === 0 || q.x - a[i - 1].x > 0.05); for (let i = 1; i < xs.length; i++) hd(xs[i - 1].x, xs[i].x, y, mm(xs[i].u - xs[i - 1].u)); if (ext != null) xs.forEach(q => Ln([q.x, ext], [q.x, y + (ext > y ? 1 : -1)], 'QUOTE', 0.1)); };
+    const vd = (ya, yb, x, txt, left) => { Ln([x, ya - 1.2], [x, yb + 1.2], 'QUOTE', 0.18); tick([x, ya]); tick([x, yb]); T([x + (left ? -1 : 1), (ya + yb) / 2], txt, 1.8, 'QUOTE', left ? 'right' : 'left'); };
+    const mm = v => String(Math.round(Math.abs(v) * 1000));
+    const pick = x => [...SCALES, 300, 400].sort((a, b) => a - b).find(s => s >= x) || 5000;
+    const title = (x, y, txt, S) => { TB([x, y], txt, 3.0, 'TESTI', 'center'); if (S) T([x, y - 5.2], `SCALA 1:${S}`, 1.9, 'ASSI', 'center'); };
+    const FILL = [[160, 222, 245], [246, 196, 232], [160, 236, 196], [250, 224, 160], [205, 196, 246], [246, 206, 176]], GREY = [195, 195, 195];
+    rect(5, 5, 410, 287, 'CORNICE', 0.5);
+
+    // ---- impaginazione: tabella e sezione A-A in basso, viste longitudinali sopra, tutte alla stessa scala
+    const rowH = sups.length > 22 ? 3.2 : sups.length > 16 ? 3.6 : 4.2, tabH = 12 + (sups.length + 1) * rowH, yB1 = 40 + Math.max(tabH, 62);
+    const zr = Z1 - zG, vr = V1 - V0, Hav = 287 - (yB1 + 4);
+    const kL = (396 - 44) / (U1 - U0), kH = (Hav - 80) / (zr + 2 * vr), SP = pick(1000 / Math.min(kL, kH)), k = 1000 / SP;
+    const gap = Math.min(18, Math.max(0, (Hav - 80 - (zr + 2 * vr) * k) / 3)); // spazio avanzato: distribuito fra le viste
+    const xo = 12 + 22 + (396 - 30 - (U1 - U0) * k) / 2, X = u => xo + (u - U0) * k;
+    const xL = X(U0), xR = X(U1);
+
+    // ---- PROSPETTO della trave esterna (vista dal lato della trave, progressive crescenti verso destra)
+    let yc = 285 - gap / 2;
+    title((xL + xR) / 2, yc - 3, `PROSPETTO ${d.pros.name}`, SP);
+    const yLab = yc - 14, yTopCh = yc - 20, yGeoTop = yc - 25, Y = z => yGeoTop - (Z1 - z) * k;
+    const FRONT = {f: [0, 1, 0], up: [0, 0, 1]};
+    const HE = hiddenLine(local, local.map(m => featureEdges(m, 25)), FRONT, 2200);
+    // sagome colorate dei conci (sotto le linee)
+    d.prof.forEach((pr, kk) => { if (pr.length < 2) return; const pts = pr.map(q => [X(q[0]), Y(q[1])]).concat([...pr].reverse().map(q => [X(q[0]), Y(q[2])])); poly(pts, FILL[kk % FILL.length], 'CONCI'); });
+    // appoggi della trave del prospetto (sotto le linee)
+    const sp = sups.filter(s => s.gi === d.pros.gi);
+    sp.forEach(s => box(X(s.u - Ls / 2), Y(s.z), X(s.u + Ls / 2), Y(zG), GREY));
+    dropShort(HE.segs, 0.15, 0.01).forEach(sg => Ln([X(sg[0]), Y(sg[1])], [X(sg[2]), Y(sg[3])], 'CONTORNI', 0.22));
+    Ln([xL - 8, Y(zG)], [xR + 8, Y(zG)], 'CONTORNI', 0.4); T([xR + 9, Y(zG)], 'piano di appoggio', 1.6, 'ASSI');
+    // conci: nome e peso, giunti, baricentri
+    const joints = []; for (let i = 1; i < d.conci.length; i++) joints.push((d.conci[i - 1].u1 + d.conci[i].u0) / 2);
+    d.conci.forEach((c, kk) => {
+      const xm = X((c.u0 + c.u1) / 2); P.push({t: 'poly', pts: [[xm - 14, yLab - 2], [xm + 14, yLab - 2], [xm + 14, yLab + 2.2], [xm - 14, yLab + 2.2]], fill: FILL[kk % FILL.length], layer: 'CONCI'});
+      T([xm, yLab], `${c.name} · ${nf(c.W, 1)} t`, 1.9, 'TESTI', 'center');
+      const xc = X(c.ucog), ycg = Y(c.zcog);
+      P.push({t: 'circle', c: [xc, ycg], r: 1.1, layer: 'BARICENTRO', w: 0.3}); P.push({t: 'sector', c: [xc, ycg], r: 1.1, a0: 0, a1: 90, layer: 'BARICENTRO'}); P.push({t: 'sector', c: [xc, ycg], r: 1.1, a0: 180, a1: 270, layer: 'BARICENTRO'});
+      T([xc + 1.8, ycg - 2], `CdG ${c.name}`, 1.6, 'BARICENTRO');
+      if (isFinite(c.zb)) vd(Y(c.zb), ycg - 1.1, xc - 2.5, mm(c.zcog - c.zb), true);
+      dashed([xc, yTopCh + 1], [xc, Y(zG) + 1], 'ASSI', 0.12);
+    });
+    joints.forEach(u => dashed([X(u), yTopCh + 1], [X(u), Y(zG) - 2], 'ASSI', 0.2));
+    // quote: in alto estremità, baricentri e giunti; in basso estremità e appoggi
+    chain([U0, U1, ...joints, ...d.conci.map(c => c.ucog)].map(u => ({u, x: X(u)})), yTopCh, null);
+    const yBotCh = Y(zG) - 8;
+    sp.forEach(s => { const x = X(s.u), y = Y(s.z); poly([[x, y], [x - 1.3, y + 2], [x + 1.3, y + 2]], [0, 0, 0], 'APPOGGI'); T([x - 1.6, y + 2.2], s.dz, 1.6, 'QUOTE', 'right'); T([x, Y(zG) - 3], 'A' + s.n, 1.7, 'APPOGGI', 'center'); });
+    chain([U0, U1, ...sp.map(s => s.u)].map(u => ({u, x: X(u)})), yBotCh, Y(zG));
+    // segni delle sezioni
+    const xs = X(d.sec.u); [[yTopCh + 3, 'A'], [yBotCh - 4, 'A']].forEach(([y, t]) => { Ln([xs, y - 1.5], [xs, y + 1.5], 'SEZIONI', 0.6); T([xs - 1.2, y], t, 2.4, 'SEZIONI', 'right'); });
+    [[Y(Z1) + 1, '1'], [Y(zLow) - 2.5, '2']].forEach(([y, t]) => [xL - 9, xR + 9].forEach(x => { Ln([x - 2, y], [x + 2, y], 'SEZIONI', 0.5); T([x, y + 2], t, 2.4, 'SEZIONI', 'center'); }));
+    yc = yBotCh - 5 - gap;
+
+    // ---- PIANTE 1-1 (dall'alto) e 2-2 (intradosso, vista dal basso ribaltata): stessa scala e stesse progressive del prospetto
+    const plan = (yTop, view, flip, label, withChain) => {
+      title((xL + xR) / 2, yTop - 3, label, SP);
+      const yG = yTop - 12, Yp = v => yG - (V1 - v) * k;
+      sups.forEach(s => box(X(s.u - Ls / 2), Yp(s.v - Bs / 2), X(s.u + Ls / 2), Yp(s.v + Bs / 2), GREY, 'APPOGGI', 0.25));
+      const h0 = hiddenLine(local, local.map(m => contourEdges(edgeNormals(m), norm(view.f))), view, 2200);
+      dropShort(h0.segs, 0.25, 0.01).forEach(sg => Ln([X(sg[0]), Yp(flip ? -sg[1] : sg[1])], [X(sg[2]), Yp(flip ? -sg[3] : sg[3])], 'CONTORNI', 0.22));
+      // travi: cerchio col nome, asse, interasse
+      const gv = [...d.girders].sort((a, b) => a.v - b.v);
+      gv.forEach(g => { const y = Yp(g.v); P.push({t: 'circle', c: [xL - 17, y], r: 2.6, layer: 'SEZIONI', w: 0.3}); T([xL - 17, y], g.name, 2.0, 'SEZIONI', 'center'); P[P.length - 1].bold = true; dashed([xL - 14, y], [xR + 4, y], 'ASSI', 0.12); });
+      for (let i = 1; i < gv.length; i++) vd(Yp(gv[i - 1].v), Yp(gv[i].v), xL - 7, mm(gv[i].v - gv[i - 1].v), true);
+      if (withChain) sups.filter(s => s.gi === gv[0].gi).length && chain([U0, U1, ...sups.filter(s => s.gi === gv[0].gi).map(s => s.u)].map(u => ({u, x: X(u)})), Yp(V0) - 6, null);
+      if (!flip) sups.forEach(s => { if (s.gi === gv[gv.length - 1].gi || gv.length === 1) T([X(s.u), Yp(s.v + Bs / 2) + 1.8], 'A' + s.n, 1.6, 'APPOGGI', 'center'); });
+      else sups.forEach(s => { if (s.gi !== gv[gv.length - 1].gi || gv.length === 1) T([X(s.u), Yp(s.v - Bs / 2) - 1.8], 'A' + s.n, 1.6, 'APPOGGI', 'center'); });
+      return Yp(V0) - (withChain ? 10 : 4);
+    };
+    yc = plan(yc, {f: [0, 0, -1], up: [0, 1, 0]}, false, 'PIANTA 1-1 (dall\'alto)', false);
+    yc = plan(yc - 1 - gap, {f: [0, 0, 1], up: [0, -1, 0]}, true, 'PIANTA 2-2 – INTRADOSSO (vista dal basso, ribaltata)', true);
+
+    // ---- SEZIONE A-A sulla fila di appoggi scelta
+    { const R = [292, 40, 116, yB1 - 40]; rect(...R, 'CORNICE', 0.18);
+      const at = d.sec.u - 0.12, view = {f: [1, 0, 0], up: [0, 0, 1]};
+      const cuts = []; local.forEach(m => cutLines(m, 0, at).forEach(c => cuts.push(c)));
+      const pl = [[0, 1, at + 1e-4], [0, -1, at + 0.6]], beyond = local.map(m => clipMesh(m, pl)).filter(m => m.idx.length);
+      const onClip = q => pl.some(([a, , v]) => Math.abs(q[a] - v) < 1e-5);
+      const edges = beyond.map(m => contourEdges(edgeNormals(m), norm(view.f)).filter(e => !(onClip([e[0], e[1], e[2]]) && onClip([e[3], e[4], e[5]]))));
+      const cm = {pos: new Float64Array(cuts.flat(2)), idx: new Uint32Array(0)};
+      const hs = hiddenLine(beyond.concat([cm]), edges, view, 1400), segs = dropShort(hs.segs, 0.05, 0.004);
+      const line = sups.filter(s => Math.abs(s.u - d.sec.u) < 0.35);
+      const u0 = Math.min(hs.umin, ...line.map(s => -s.v - Bs)), u1 = Math.max(hs.umax, ...line.map(s => -s.v + Bs)), v0 = zG, v1 = hs.vmax;
+      const S2 = pick(Math.max((u1 - u0) / (R[2] - 20), (v1 - v0) / (R[3] - 26)) * 1000), k2 = 1000 / S2;
+      const cx = R[0] + R[2] / 2, cy = R[1] + 13 + (R[3] - 26) / 2, mp = (U, V) => [cx + (U - (u0 + u1) / 2) * k2, cy + (V - (v0 + v1) / 2) * k2];
+      title(cx, R[1] + R[3] - 4, `SEZIONE A-A`, S2);
+      line.forEach(s => { const a = mp(-s.v - Bs / 2, s.z), b = mp(-s.v + Bs / 2, zG); box(a[0], a[1], b[0], b[1], GREY); });
+      segs.forEach(sg => Ln(mp(sg[0], sg[1]), mp(sg[2], sg[3]), 'CONTORNI', 0.22));
+      cuts.forEach(c => { const a = hs.prj(...c[0]), b = hs.prj(...c[1]); Ln(mp(a[0], a[1]), mp(b[0], b[1]), 'TAGLIO', 0.5); });
+      const g0 = mp(u0, zG), g1 = mp(u1, zG); Ln([g0[0] - 3, g0[1]], [g1[0] + 3, g1[1]], 'CONTORNI', 0.4);
+      line.forEach(s => { const q = mp(-s.v, s.z); poly([q, [q[0] - 1.2, q[1] + 1.8], [q[0] + 1.2, q[1] + 1.8]], [0, 0, 0], 'APPOGGI'); T([q[0] + 1.5, q[1] + 2], s.dz, 1.5, 'QUOTE'); T([q[0], g0[1] - 2.5], 'A' + s.n, 1.6, 'APPOGGI', 'center'); });
+      const ys = g0[1] - 7, xsA = line.map(s => ({u: -s.v, x: mp(-s.v, 0)[0]}));
+      if (xsA.length > 1) chain(xsA, ys, null);
+      T([R[0] + 2, R[1] + R[3] - 13], d.sec.label, 1.6, 'ASSI'); }
+
+    // ---- tabella degli appoggi
+    { const x0 = 12, top = yB1, cols = [['App.', 13], ['Concio', 44], ['Trave', 13], ['Prog. mm', 21], ['Reaz. t', 18], ['Quota rel. mm', 22], ['X m', 40], ['Y m', 40], ['Z m', 30], ['Note', 33]];
+      const W = cols.reduce((a, c) => a + c[1], 0);
+      T([x0, top - 4], 'APPOGGI – coordinate nel sistema del modello (m), quote all\'intradosso della piattabanda', 2.2); P[P.length - 1].bold = true;
+      const y0 = top - 8, ts = rowH > 3.8 ? 1.75 : 1.5;
+      Ln([x0, y0], [x0 + W, y0], 'CORNICE', 0.3);
+      let x = x0; cols.forEach(c => { T([x + c[1] / 2, y0 - rowH / 2], c[0], ts, 'TESTI', 'center'); P[P.length - 1].bold = true; x += c[1]; });
+      Ln([x0, y0 - rowH], [x0 + W, y0 - rowH], 'CORNICE', 0.25);
+      const f3 = v => nf(v, 3);
+      d.sups.forEach((s, i) => { const y = y0 - rowH * (i + 1.5), cells = ['A' + s.n, d.conci[s.k].name, s.g, mm(s.u - U0), isFinite(s.R) ? nf(s.R, 1) : '–', s.dz, isFinite(s.X) ? f3(s.X) : '–', isFinite(s.Y) ? f3(s.Y) : '–', isFinite(s.Z) ? f3(s.Z) : '–', s.note || ''];
+        let xx = x0; cells.forEach((t, j) => { const c = cols[j]; T([j >= 3 && j <= 8 ? xx + c[1] - 1.2 : xx + 1.2, y], t, ts, s.note && j === 9 ? 'BARICENTRO' : 'TESTI', j >= 3 && j <= 8 ? 'right' : 'left'); xx += c[1]; });
+        if (i < d.sups.length - 1 && d.sups[i + 1].k !== s.k) Ln([x0, y - rowH / 2], [x0 + W, y - rowH / 2], 'CORNICE', 0.12); });
+      const yb = y0 - rowH * (d.sups.length + 1); Ln([x0, yb], [x0 + W, yb], 'CORNICE', 0.3);
+      x = x0; for (let j = 0; j <= cols.length; j++) { Ln([x, y0], [x, yb], 'CORNICE', 0.12); if (j < cols.length) x += cols[j][1]; } }
+
+    // ---- cartiglio
+    const ty = 8, th = 28; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
+    T([14, ty + th - 4.5], `APPOGGI PROVVISORI A TERRA – ${d.name}`, 3.0); P[P.length - 1].bold = true;
+    const notes = ['NOTA 1: quote altimetriche riferite all\'intradosso della piattabanda inferiore, in asse all\'anima.',
+      `NOTA 2: quote relative in mm, rispetto all'appoggio più basso (±0). Selle ${mm(Ls)} × ${mm(Bs)} mm (lungo l'asse × trasversale).`,
+      `NOTA 3: rappresentata la trave ${d.pros.name}; schema valido anche per le altre travi.`,
+      'NOTA 4: reazioni con concio rigido su appoggi di uguale rigidezza, dal peso di calcolo di ogni concio. Valori indicativi da verificare.'];
+    notes.forEach((t, i) => T([14, ty + th - 10 - i * 4.2], t, 1.6));
+    T([252, ty + th - 5.5], d.project || '', 2.4); T([252, ty + th - 11.5], `Data ${new Date().toLocaleDateString('it-IT')} · scala 1:${SP}`, 2.0);
+    T([252, ty + 2.5], 'Peso e baricentro · Appoggi a terra · Trimble Connect', 1.5);
+    logos(P, ty);
+    // le campiture vanno sotto le linee
+    const fills = P.filter(p => p.t === 'poly' && p.layer === 'CONCI'), grey = P.filter(p => p.t === 'poly' && p.layer === 'APPOGGI' && p.fill !== undefined && p.fill[0] > 100), rest = P.filter(p => !fills.includes(p) && !grey.includes(p));
+    return {prims: [...fills, ...grey, ...rest], scale: SP};
   }
 
   // ------------------------------------------------------------------ TAVOLA "SAGOMA": pianta + 4 sezioni sotto i golfari
@@ -1398,6 +1749,6 @@
     return {prism, tube, box, lug, oct};
   }
 
-  const API = {buildLugLayout, buildLugShop, lugCheck, STEELS, LUG_GEO_DEFAULT, silhouette, insertIntoIfc, buildLugSheet, lugIfc, liftModel, placeLugs, slingForces, IFC, toDxfMulti, initIfc, openIfc, meshOf, leaves, volCentroid, bboxOf, buildSheet, toPdf, toDxf, featureEdges, hiddenLine};
+  const API = {supportSetup, girderProfile, computeSupports, supportModel, placeSupports, supportReactions, buildSupportSheet, buildLugLayout, buildLugShop, lugCheck, STEELS, LUG_GEO_DEFAULT, silhouette, insertIntoIfc, buildLugSheet, lugIfc, liftModel, placeLugs, slingForces, IFC, toDxfMulti, initIfc, openIfc, meshOf, leaves, volCentroid, bboxOf, buildSheet, toPdf, toDxf, featureEdges, hiddenLine};
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PBDraw = API;
 })(typeof window !== 'undefined' ? window : globalThis);
