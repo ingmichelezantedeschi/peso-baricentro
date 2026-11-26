@@ -862,8 +862,10 @@
     const map = (u, v) => [ox + (u - cu) * k2, oy + (v - cv) * k2], pm = p => { const q = HP.prj(p[0], p[1], p[2]); return map(q[0], q[1]); };
     HP.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), ctx ? 'VISTA_3D' : 'CONTORNI', ctx ? 0.18 : 0.3));
     if (HM) HM.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), 'CONTORNI', 0.55));
+    const isMark = /^marca /.test(d.refLabel || '');
     T([RP[0] + 3, RP[1] + RP[3] - 5], `PIANTA – posizione dei golfari   1:${SP}`, 2.6);
-    T([RP[0] + 3, RP[1] + RP[3] - 11], `Riferimento: ${d.refLabel}`, 2.0);
+    if (isMark) { const q = [RP[0] + 3, RP[1] + RP[3] - 13], tx = `MARCA ${d.refLabel.replace(/^marca /, '')}`; P.push({t: 'tbox', p: q, txt: tx, s: 4.6 * 1.4, layer: 'SEZIONI'}); T(q, tx, 4.6, 'SEZIONI'); P[P.length - 1].bold = true; }
+    else T([RP[0] + 3, RP[1] + RP[3] - 11], `Riferimento: ${d.refLabel}`, 2.0);
     // riferimento: estremità iniziale
     const r0 = pm([U0, 0, 0]), yTop = map(0, HP.vmax)[1], yBot = map(0, HP.vmin)[1];
     Ln([r0[0], yTop + 6 + upL.length * 7], [r0[0], yBot - 6 - dnL.length * 7], 'SEZIONI', 0.35); T([r0[0] - 1.5, yTop + 8 + upL.length * 7], 'RIF. 0', 2.2, 'SEZIONI', 'right');
@@ -948,7 +950,7 @@
     });
     // cartiglio
     const ty = 8, th = 28; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
-    T([14, ty + th - 5.5], `POSIZIONAMENTO GOLFARI – ${d.name}`, 3.0); P[P.length - 1].bold = true;
+    T([14, ty + th - 5.5], `POSIZIONAMENTO GOLFARI – ${/^marca /.test(d.refLabel || '') ? 'MARCA ' + d.refLabel.replace(/^marca /, '') + ' (' + d.name + ')' : d.name}`, 3.0); P[P.length - 1].bold = true;
     T([14, ty + th - 11.5], `Riferimento: ${d.refLabel} · piastra ${nf(g.L, 0)} × ${nf(g.ev + g.R, 0)} × ${nf(g.t, 0)} mm${g.rot ? ', ruotata in pianta verso il punto di presa' : ', lungo l\'asse della trave'}`, 1.9);
     T([14, ty + th - 17], 'Quote in mm. Distanze longitudinali dal RIF. 0, lungo l\'asse del concio.', 1.8);
     T([252, ty + th - 5.5], d.project || '', 2.4); T([252, ty + th - 11.5], `Data ${new Date().toLocaleDateString('it-IT')}`, 2.0);
@@ -1031,7 +1033,7 @@
     const EP = extOf(HP, [hook, ...lugs.map(l => l.L)]); EP.v1 -= 1.2;
     const need = (e, r) => Math.max((e.u1 - e.u0) / (r[2] - 24), (e.v1 - e.v0) / (r[3] - 22)) * 1000;
     const pick = x => SCALES.find(s => s >= x) || 5000;
-    const SP = pick(need(EP, R.plan));
+    const SP = pick(Math.max((EP.u1 - EP.u0) / (R.plan[2] - 50), (EP.v1 - EP.v0) / (R.plan[3] - 46)) * 1000);
     secs.forEach(sc => { sc.e = extOf(sc.h, sc.lugs.map(l => l.L)); });
     const ST = pick(Math.max(0, ...secs.filter(x => x.kind === 'T').map(sc => need(sc.e, sc.r))));
     const SL = pick(Math.max(0, ...secs.filter(x => x.kind === 'L').map(sc => need(sc.e, sc.r))));
@@ -1045,7 +1047,7 @@
     const dashed = (a, b, layer) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.floor(L / 4)); for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 0.6) / n; Ln([a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1], layer || 'ASSI', 0.13); } };
     const mm = v => nf(Math.abs(v) * 1000, 0);
     const hd = (xa, xb, y, txt) => { Ln([xa, y], [xb, y], 'QUOTE', 0.18); Ln([xa, y - 1.3], [xa, y + 1.3], 'QUOTE', 0.18); Ln([xb, y - 1.3], [xb, y + 1.3], 'QUOTE', 0.18); T([(xa + xb) / 2, y + 1], txt, 2.1, 'QUOTE', 'center'); };
-    const vd = (ya, yb, x, txt) => { Ln([x, ya], [x, yb], 'QUOTE', 0.18); Ln([x - 1.3, ya], [x + 1.3, ya], 'QUOTE', 0.18); Ln([x - 1.3, yb], [x + 1.3, yb], 'QUOTE', 0.18); T([x + 1.5, (ya + yb) / 2], txt, 2.1, 'QUOTE'); };
+    const vd = (ya, yb, x, txt, left) => { Ln([x, ya], [x, yb], 'QUOTE', 0.18); Ln([x - 1.3, ya], [x + 1.3, ya], 'QUOTE', 0.18); Ln([x - 1.3, yb], [x + 1.3, yb], 'QUOTE', 0.18); T([x + (left ? -1.5 : 1.5), (ya + yb) / 2], txt, 2.1, 'QUOTE', left ? 'right' : 'left'); };
     const mapper = (h, e, r, S) => { const k2 = 1000 / S, cu = (e.u0 + e.u1) / 2, cv = (e.v0 + e.v1) / 2, ox = r[0] + r[2] / 2, oy = r[1] + r[3] / 2 - 1;
       const map = (u, v) => [ox + (u - cu) * k2, oy + (v - cv) * k2]; return {k2, map, pm: p => { const q = h.prj(p[0], p[1], p[2]); return map(q[0], q[1]); }}; };
     rect(5, 5, 410, 287, 'CORNICE', 0.5);
@@ -1055,7 +1057,12 @@
       HP.segs.forEach(sg => Ln(map(sg[0], sg[1]), map(sg[2], sg[3]), 'CONTORNI', 0.3));
       T([r[0] + 2, r[1] + r[3] - 4], 'PIANTA   1:' + SP, 2.8);
       dashed([r[0] + 4, cp[1]], [r[0] + r[2] - 4, cp[1]]); dashed([cp[0], r[1] + 4], [cp[0], r[1] + r[3] - 8]);
-      lugs.forEach(l => { const lp = pm(l.L); Ln(lp, hpp, 'FUNI', 0.7); C(lp, Math.max(1.3, 0.15 * k2), 'GOLFARI', 0.6); const ox = lp[0] < cp[0] ? -1 : 1, oy = lp[1] < cp[1] ? -1 : 1; T([lp[0] + ox * 2.5, lp[1] + (oy > 0 ? 2.5 : -5.5)], 'F' + l.n, 2.4, 'FUNI', ox < 0 ? 'right' : 'left'); });
+      const ext = {top: map(0, HP.vmax)[1], bot: map(0, HP.vmin)[1], left: map(HP.umin, 0)[0], right: map(HP.umax, 0)[0]};
+      lugs.forEach(l => { const lp = pm(l.L); Ln(lp, hpp, 'FUNI', 0.7); C(lp, Math.max(1.3, 0.15 * k2), 'GOLFARI', 0.6); const ox = lp[0] < cp[0] ? -1 : 1, up = l.L[1] >= 0, q = [lp[0] + ox * 9, up ? ext.top + 15.5 : ext.bot - 17.5];
+        Ln(lp, [q[0], q[1] + (up ? -1.5 : 3.5)], 'FUNI', 0.15); P.push({t: 'tbox', p: q, txt: 'F' + l.n, s: 3.2 * 1.5, layer: 'FUNI', align: 'center'}); P.push({t: 'text', p: q, txt: 'F' + l.n, s: 3.2 * 1.5, layer: 'FUNI', align: 'center', bold: true});
+        const yq = up ? ext.top + 8.5 : ext.bot - 8.5; Ln(lp, [lp[0], yq + (up ? 1.5 : -1.5)], 'QUOTE', 0.12); hd(Math.min(lp[0], cp[0]), Math.max(lp[0], cp[0]), yq, `X ${mm(l.L[0])}`);
+        const xq = ox < 0 ? ext.left - 7 : ext.right + 7; Ln(lp, [xq + (ox < 0 ? -1.5 : 1.5), lp[1]], 'QUOTE', 0.12); vd(Math.min(lp[1], cp[1]), Math.max(lp[1], cp[1]), xq, `Y ${mm(l.L[1])}`, ox < 0);
+        if (false) T([0, 0], 'F' + l.n, 2.4, 'FUNI', ox < 0 ? 'right' : 'left'); });
       cogSym(cp, 2.6); { const tx = `COG = ${nf(d.weight, 1)} t`, tp = [cp[0] + 11, cp[1] + 4.2], ts = 3.3; P.push({t: 'tbox', p: tp, txt: tx, s: ts, layer: 'BARICENTRO'}); P.push({t: 'text', p: tp, txt: tx, s: ts, layer: 'BARICENTRO', align: 'left'}); }
       // tracce delle sezioni
       const vMin = HP.vmin - 0.6, vMax = HP.vmax + 0.6;
@@ -1088,24 +1095,26 @@
         Ln([lp[0] + a, lp[1]], [lp[0] + a * 0.5, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] - a * 0.5, lp[1] + hh], [lp[0] + a * 0.5, lp[1] + hh], 'GOLFARI', 0.35);
         const tp = [lp[0], lp[1] + hh], hq = pm(hook), dx = hq[0] - tp[0], dy = hq[1] - tp[1], dl = Math.hypot(dx, dy) || 1, len = 12;
         const ep = [tp[0] + dx / dl * len, tp[1] + dy / dl * len]; Ln(tp, ep, 'FUNI', 0.45);
-        T([ep[0] + (dx < 0 ? -1 : 1), ep[1] + 1], 'F' + l.n, 2.2, 'FUNI', dx < 0 ? 'right' : 'left');
+        { const q = [ep[0] + (dx < 0 ? -1.5 : 1.5), ep[1] + 1.5], al = dx < 0 ? 'right' : 'left'; P.push({t: 'tbox', p: q, txt: 'F' + l.n, s: 2.8 * 1.5, layer: 'FUNI', align: al}); T(q, 'F' + l.n, 2.8, 'FUNI', al); P[P.length - 1].bold = true; }
         T([lp[0] + (dx < 0 ? a + 1.5 : -a - 1.5), lp[1] + hh + 2.2], lvl(zr(l.L[2])), 1.9, 'QUOTE', dx < 0 ? 'left' : 'right');
         yTop = Math.max(yTop, ep[1]);
       });
       // quote dei golfari dall'asse del baricentro
-      const yq = Math.min(yTop + 3, r[1] + r[3] - 9);
+      const yq = Math.min(yTop + 7, r[1] + r[3] - 9);
       sc.lugs.forEach(l => { const x = pm(l.L)[0]; hd(Math.min(x, cp[0]), Math.max(x, cp[0]), yq, mm(sc.kind === 'T' ? l.L[1] : l.L[0])); });
     });
     // tabella
     const t = R.tab, x0 = t[0] + 2; let y = t[1] + t[3] - 5;
-    T([x0, y], 'GOLFARI E FUNI', 2.8); y -= 5.5;
-    const cols = [0, 10, 21, 35, 48, 62, 78];
-    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Grillo'].forEach((h, i) => T([x0 + cols[i], y], h, 1.9)); y -= 2; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 3.5;
+    T([x0, y], 'GOLFARI E FUNI', 2.43); y -= 6;
+    const cols = [0, 9, 19, 33, 46, 61, 76];
+    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Grillo'].forEach((h, i) => { T([x0 + cols[i], y], h, 2.0); P[P.length - 1].bold = true; }); y -= 2.5; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.13); y -= 5;
     lugs.forEach(l => { const row = ['F' + l.n, l.g || '', nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
-      row.forEach((v, j) => T([x0 + cols[j], y], v, 2.1)); T([x0 + cols[6], y], (l.type || '–'), 1.9); T([x0 + cols[6], y - 3.4], (l.shackle || ''), 1.7); y -= 8.5; });
-    y -= 1; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.skl && d.skl !== 1 ? ' · SKL ' + nf(d.skl, 2) + ' nelle verifiche' : ''}`, 2.2); y -= 4.5;
-    T([x0, y], `Gancio sopra il baricentro, quota ${lvl(zr(hook[2]))} m`, 2.0); y -= 4.5;
-    T([x0, y], `COG a quota ${lvl(zr(0))} m · golfari a ${[...new Set(lugs.map(l => lvl(zr(l.L[2]))))].join(' / ')} m`, 2.0); y -= 4.5;
+      row.forEach((v, j) => { T([x0 + cols[j], y], v, 2.34); if (j === 0 || j === 3) P[P.length - 1].bold = true; });
+      T([x0 + cols[6], y], String(l.type || l.shackle || '–').replace(/^Grillo\s+/i, ''), 1.9); y -= 8.5; });
+    y -= 1; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.skl && d.skl !== 1 ? ' · SKL ' + nf(d.skl, 2) + ' nelle verifiche' : ''}`, 2.43); P[P.length - 1].bold = true; y -= 6.5;
+    T([x0, y], `Gancio sopra il baricentro, quota ${lvl(zr(hook[2]))} m`, 2.17); y -= 5.5;
+    T([x0, y], `COG a quota ${lvl(zr(0))} m`, 2.17); y -= 5.5;
+    T([x0, y], `Golfari a ${[...new Set(lugs.map(l => lvl(zr(l.L[2]))))].join(' / ')} m`, 2.17); y -= 5.5;
     // cartiglio
     const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
     T([14, ty + th - 6], `SCHEMA DI SOLLEVAMENTO CON GRU SINGOLA – ${d.name}`, 3.4); P[P.length - 1].bold = true;

@@ -207,7 +207,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=32"></script>
+<script src="draw.js?v=33"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -217,7 +217,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '32 (26/11/2026)';
+  const PB_VERSION = '33 (26/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store;
@@ -1063,7 +1063,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
         for (const {part, lugs: ls} of byPart.values()) {
           const ms = part ? items.filter(i => i.part === part).map(i => i.ms) : items.map(i => i.ms);
           const nm = part ? await markName(part) : c.name;
-          pages.push(PBDraw.buildLugLayout({...base, meshes: ms, ctxMeshes: items.map(i => i.ms), lugs: ls, refLabel: part ? `marca ${nm}` : `macroconcio ${c.name}`}));
+          pages.push(PBDraw.buildLugLayout({...base, meshes: ms, lugs: ls, refLabel: part ? `marca ${nm}` : `macroconcio ${c.name}`})); // solo la marca
         }
       }
       const fn = safe(c.name) + '_posizionamento_golfari' + ($('#layRef').value === 'mark' ? '_marche' : '');
