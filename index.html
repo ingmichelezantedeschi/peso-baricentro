@@ -151,6 +151,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
         <label class="f">Lunghezza piastra L (mm)<input type="text" inputmode="decimal" data-ec="L"></label>
         <label class="f">Spessore t (mm)<input type="text" inputmode="decimal" data-ec="t"></label>
         <label class="f">Raggio R (mm)<input type="text" inputmode="decimal" data-ec="R"></label>
+        <label class="f" style="justify-content:flex-end"><span><input type="checkbox" data-ec="rot"> Golfari ruotati in pianta verso il punto di presa</span></label>
         <label class="f" style="justify-content:flex-end"><span><input type="checkbox" data-ec="vside"> Tratto verticale prima del tondo</span></label>
         <label class="f ecV">Altezza tratto verticale (mm)<input type="text" inputmode="decimal" data-ec="hv"></label>
         <label class="f">Eccentricità foro ev (mm)<input type="text" inputmode="decimal" data-ec="ev"></label>
@@ -204,7 +205,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=23"></script>
+<script src="draw.js?v=24"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -214,7 +215,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '23 (26/11/2026)';
+  const PB_VERSION = '24 (26/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store;
@@ -895,9 +896,12 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     LUG.geoEff = gEff;
     rows.forEach(x => { // angolo della fune rispetto al piano della piastra (piastra lungo l'asse della trave)
       const dx = geo.cog[0] - x.x, dy = geo.cog[1] - x.y, dl = Math.hypot(dx, dy) || 1;
-      x.aH = Math.acos(Math.min(1, Math.abs(dx * lm.ax[0] + dy * lm.ax[1]) / dl)) * 180 / Math.PI;
+      let ph = Math.atan2((dx * -lm.ax[1] + dy * lm.ax[0]) / dl, (dx * lm.ax[0] + dy * lm.ax[1]) / dl); if (ph > Math.PI / 2) ph -= Math.PI; if (ph <= -Math.PI / 2) ph += Math.PI;
+      const rotOn = !!store.lugGeo.rot; x.phi = rotOn ? ph : 0; x.dir = rotOn ? [lm.ax[0] * Math.cos(ph) - lm.ax[1] * Math.sin(ph), lm.ax[1] * Math.cos(ph) + lm.ax[0] * Math.sin(ph)] : null; // asse della piastra in pianta
+      x.aH = rotOn ? 0 : Math.acos(Math.min(1, Math.abs(dx * lm.ax[0] + dy * lm.ax[1]) / dl)) * 180 / Math.PI;
+      if (rotOn) { const gd = lm.girderAt(x.gi, x.u), Lp = (+gEff.L || 0) / 1000, tp = (+gEff.t || 0) / 1000; x.overhang = (Lp / 2) * Math.abs(Math.sin(ph)) + (tp / 2) * Math.abs(Math.cos(ph)) > gd.w / 2 - 0.01; }
       x.ec = PBDraw.lugCheck(gEff, {FEk: x.T * 9.80665, aV: x.alpha, aH: x.aH}); });
-    gEff.theta = Math.max(...rows.map(x => Math.atan2(Math.cos(x.alpha * Math.PI / 180) * Math.cos(x.aH * Math.PI / 180), Math.sin(x.alpha * Math.PI / 180)) * 180 / Math.PI));
+    if (store.lugGeo.rot) gEff.theta = Math.max(...rows.map(x => 90 - x.alpha)); else gEff.theta = Math.max(...rows.map(x => Math.atan2(Math.cos(x.alpha * Math.PI / 180) * Math.cos(x.aH * Math.PI / 180), Math.sin(x.alpha * Math.PI / 180)) * 180 / Math.PI));
     LUG.res = {fd, moved, ax: lm.ax, mode: moved ? 'personalizzata' : r.mode, R: (dmax + dmin) / 2, dev: dmax - dmin, rows, hook: [geo.cog[0], geo.cog[1], hookZ + ref[2]], H, W, n, gs, lugL, lugWd};
     LUG.preview = rows.map(rw => ({x: rw.x, y: rw.y, z: rw.z}));
     const warn = [];
@@ -906,12 +910,13 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     if (rows.some(x => x.alpha < 45)) warn.push('<span class="warn">fune con angolo inferiore a 45°: alza il gancio</span>');
     const Ps = rows.map(x => x.P); if (Math.max(...Ps) > 2 * Math.min(...Ps)) warn.push('<span class="warn">carichi molto sbilanciati: il baricentro non è centrato fra i golfari scelti</span>');
     if (rows.some(x => !x.shackle)) warn.push('<span class="ko">tiro oltre il catalogo dei grilli</span>');
+    if (rows.some(x => x.overhang)) warn.push('<span class="ko">un golfare ruotato esce dalla piattabanda: riduci la lunghezza della piastra</span>');
     if (rope && ropeFail.length) warn.push('<span class="ko">non riesco a pareggiare la fune di ' + ropeFail.map(k => 'G' + (k + 1)).join(', ') + ': cambia il golfare fisso o la sua posizione</span>');
     if (rope) { const Ls = rows.map(x => x.Ls); warn.push(`<span class="ok">funi: ${nf(Math.min(...Ls), 3)}–${nf(Math.max(...Ls), 3)} m</span>`); }
     if ((man || moved || rope) && rows.some(x => x.near > 0.15)) warn.push('<span class="warn">un golfare non è in asse a un diaframma o irrigidimento</span>');
     $('#lugSum').innerHTML = `${axial ? 'Distanza lungo l\'asse' : 'Distanza in pianta'} dal baricentro ${nf(LUG.res.R, 3)} m · scarto fra i golfari <b>${nf(LUG.res.dev * 1000, 0)} mm</b> · gancio a quota ${nf(hookZ + ref[2], 2)} m` + (warn.length ? '<br>' + warn.join(' · ') : ' · <span class="ok">✓ tutti i golfari appoggiano sulla piattabanda</span>');
     $('#lugTab').innerHTML = '<tr><th>Golf.</th><th>Trave</th><th class="k">Carico t</th><th class="k">Tiro t</th><th class="k">Fune m</th><th class="k">Angolo °</th><th class="k">EC3</th><th>Asse m</th><th>Pianta m</th><th>Appoggio</th><th>Da asse</th><th>Grillo</th><th>Sposta</th></tr>' +
-      rows.map(x => `<tr><td>G${x.k}</td><td>${x.g}</td><td class="k">${nf(x.P, 1)}</td><td class="k">${nf(x.T, 1)}</td><td class="k">${nf(x.Ls, 2)}</td><td class="k ${x.alpha < 45 ? 'warn' : ''}">${nf(x.alpha, 1)}</td><td class="${x.ec.max <= 1 ? 'okc' : 'koc'}" title="Rapporto massimo della verifica EN 1993-1-8">${nf(x.ec.max, 2)}</td><td>${nf(Math.abs(x.u), 3)}</td><td>${nf(x.d, 3)}</td><td class="${x.support >= 0.9 ? 'ok' : 'ko'}">${nf(x.support * 100, 0)}%${x.studs ? ' · ' + x.studs + ' p.' : ''}</td><td>${x.near == null ? '–' : nf(x.near * 1000, 0) + ' mm'}</td><td class="${x.shackle ? '' : 'ko'}">${esc(x.shackle || 'oltre catalogo')}</td><td><button class="sm" data-mv="${x.k - 1}" data-dir="-1" title="Asse più vicino al baricentro">‹</button><button class="sm" data-mv="${x.k - 1}" data-dir="1" title="Asse più lontano dal baricentro">›</button><button class="sm" data-pk="${x.k - 1}" title="Clicca un punto nel modello">⌖</button>${x.moved ? ' ✎' : ''}</td></tr>`).join('');
+      rows.map(x => `<tr><td>G${x.k}</td><td>${x.g}</td><td class="k">${nf(x.P, 1)}</td><td class="k">${nf(x.T, 1)}</td><td class="k">${nf(x.Ls, 2)}</td><td class="k ${x.alpha < 45 ? 'warn' : ''}">${nf(x.alpha, 1)}</td><td class="${x.ec.max <= 1 ? 'okc' : 'koc'}" title="Rapporto massimo della verifica EN 1993-1-8">${nf(x.ec.max, 2)}</td><td>${nf(Math.abs(x.u), 3)}</td><td>${nf(x.d, 3)}</td><td class="${x.support >= 0.9 ? 'ok' : 'ko'}">${nf(x.support * 100, 0)}%${x.studs ? ' · ' + x.studs + ' p.' : ''}</td><td>${x.near == null ? '–' : nf(x.near * 1000, 0) + ' mm'}</td><td class="${x.shackle ? '' : 'ko'}" title="${esc(x.shackle || '')}">${esc(x.shackle ? x.shackle.replace(/^Grillo\s+/i, '').replace(/\s+[\d\-\/]+"/, '') : 'oltre catalogo')}</td><td><button class="sm" data-mv="${x.k - 1}" data-dir="-1" title="Asse più vicino al baricentro">‹</button><button class="sm" data-mv="${x.k - 1}" data-dir="1" title="Asse più lontano dal baricentro">›</button><button class="sm" data-pk="${x.k - 1}" title="Clicca un punto nel modello">⌖</button>${x.moved ? ' ✎' : ''}</td></tr>`).join('');
     renderEc(rows); fillEc();
     $('#lugTab').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => moveLug(+b.dataset.mv, +b.dataset.dir));
     $('#lugTab').querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { pickMode = 'lug:' + b.dataset.pk; try { api.viewer.activateTool('picking'); } catch (e) {} lugMsg(`Clicca nel modello il punto per il golfare G${+b.dataset.pk + 1}: viene portato sulla piattabanda della sua trave.`); });
@@ -967,8 +972,9 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     s += `<line x1="${Xs(-t / 2)}" y1="${Y(ev - d0 / 2)}" x2="${Xs(t / 2)}" y2="${Y(ev - d0 / 2)}" stroke="#888" stroke-dasharray="3 2"/><line x1="${Xs(-t / 2)}" y1="${Y(ev + d0 / 2)}" x2="${Xs(t / 2)}" y2="${Y(ev + d0 / 2)}" stroke="#888" stroke-dasharray="3 2"/>`;
     if (sh) { // grillo visto di fronte: orecchie ai lati della piastra, arco sopra
       const xa = sh.A / 2 + sh.D / 2, xe = sh.E / 2 + sh.D / 2, yb = ev + sh.C - sh.E / 2;
-      s += `<g opacity="0.55" fill="none" stroke="#1d4f8a" stroke-width="${Math.max(1.5, sh.D * sc)}" stroke-linecap="round"><path d="M${Xs(-xa)},${Y(ev)} L${Xs(-xe)},${Y(yb)} A${xe * sc},${xe * sc} 0 0 1 ${Xs(xe)},${Y(yb)} L${Xs(xa)},${Y(ev)}"/></g>`;
-      s += `<line x1="${Xs(-xa - sh.D)}" y1="${Y(ev)}" x2="${Xs(xa + sh.D)}" y2="${Y(ev)}" stroke="#1d4f8a" stroke-width="${Math.max(1.5, sh.B * sc)}" opacity="0.5"/>`;
+      const up = `M${Xs(-xa)},${Y(ev)} L${Xs(-xe)},${Y(yb)} A${xe * sc},${xe * sc} 0 0 1 ${Xs(xe)},${Y(yb)} L${Xs(xa)},${Y(ev)}`;
+      s += `<g opacity="0.55" fill="none" stroke-linecap="round"><path d="${up}" stroke="#1d4f8a" stroke-width="${Math.max(2.5, sh.D * sc + 2)}"/><path d="${up}" stroke="#7aa7d9" stroke-width="${Math.max(1.5, sh.D * sc)}"/>`;
+      s += `<line x1="${Xs(-xa - sh.D)}" y1="${Y(ev)}" x2="${Xs(xa + sh.D)}" y2="${Y(ev)}" stroke="#1d4f8a" stroke-width="${Math.max(2.5, sh.B * sc + 2)}"/><line x1="${Xs(-xa - sh.D)}" y1="${Y(ev)}" x2="${Xs(xa + sh.D)}" y2="${Y(ev)}" stroke="#7aa7d9" stroke-width="${Math.max(1.5, sh.B * sc)}"/></g>`;
       s += tx(sx, 16, `${g.mat} · ${esc(sh.name || '')}`.slice(0, 40));
     } else s += tx(sx, 16, `${g.mat}`);
     return s + '</svg>';
@@ -1042,7 +1048,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       lugMsg('Preparazione del disegno di posizionamento…', true); await tick();
       let proj = {}; try { proj = await api.project.getProject(); } catch (e) {}
       const {c, geo, lm, res} = LUG, items = geo.items;
-      const lugs = res.rows.map(x => { const gd = lm.girderAt(x.gi, x.u); return {n: x.k, x: x.x, y: x.y, z: x.z, gv: gd.v, gw: gd.w, el: x.el}; });
+      const lugs = res.rows.map(x => { const gd = lm.girderAt(x.gi, x.u); return {n: x.k, x: x.x, y: x.y, z: x.z, gv: gd.v, gw: gd.w, el: x.el, phi: x.phi || 0}; });
       const base = {ref: geo.ref2, ax: res.ax, cog: geo.cog, name: c.name, project: proj.name || '', geo: LUG.geoEff || store.lugGeo};
       const pages = [];
       if ($('#layRef').value === 'macro') pages.push(PBDraw.buildLugLayout({...base, meshes: items.map(i => i.ms), lugs, refLabel: `macroconcio ${c.name}`}));
@@ -1094,7 +1100,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   $('#lugSave').onclick = async () => {
     if (!LUG || !LUG.res) return; setWcalc(); const {c, res} = LUG;
     c.lugs = {cogRef: c.cog.slice(), nRef: c.n, off: LUG.geo.off, model: LUG.geo.model, cog: LUG.geo.cog, ax: res.ax, custom: {...LUG.custom}, fd: res.fd, metric: $('#lugMetric').value, anchor: +$('#lugAnchor').value || 0, n: res.n, girders: res.gs, mode: res.mode, alt: LUG.alt || 0, R: res.R, dev: res.dev, H: res.H, W: res.W, lugL: res.lugL, lugWd: res.lugWd, hook: res.hook,
-      ec: {...(LUG.geoEff || store.lugGeo)}, points: res.rows.map(x => ({ecMax: x.ec ? x.ec.max : null, aH: x.aH, type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
+      ec: {...(LUG.geoEff || store.lugGeo)}, points: res.rows.map(x => ({ecMax: x.ec ? x.ec.max : null, aH: x.aH, dir: x.dir, phi: x.phi, type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
     c.ed = Date.now(); save(); render(); await drawIcons();
     lugMsg(`<span class="ok">Golfari salvati in "${esc(c.name)}".</span>`);
   };
@@ -1111,7 +1117,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   function lugExportData() {
     const {c, g, geo, res} = LUG;
     return {name: c.name, weight: res.W, cog: geo.cog, ax: res.ax, hook: res.hook, lugL: res.lugL, fd: res.fd, group: g.name,
-      lugs: res.rows.map(x => ({x: x.x, y: x.y, z: x.z, g: x.g, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls, type: x.shackle, shackle: ''}))};
+      lugs: res.rows.map(x => ({x: x.x, y: x.y, z: x.z, g: x.g, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls, type: x.shackle, shackle: '', dir: x.dir}))};
   }
   async function lugExport(kind, outline) {
     if (!LUG || !LUG.res) { lugMsg('Calcola prima i golfari.'); return; }
