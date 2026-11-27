@@ -67,12 +67,36 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+GRILLI E VERIFICA DEL GOLFARE (versione 46)
+- Golfari › "Catalogo golfari e grilli": "Serie dei grilli" Crosby G-209 o Green Pin G-4163.
+  Il programma sceglie sempre il grillo della serie in base al tiro (e il foro sul grillo maggiore).
+- Verifica EN 1993-1-8: tolta la pressione di contatto (§3.13.2); restano geometria, rifollamento,
+  sezioni e saldature.
+
+PRESA CON UNA O DUE GRU SU PUNTI SCELTI (versione 45)
+- Nella scheda del baricentro, tasto "Presa". Nessun punto proposto: li sceglie l'utente.
+- 1 · Gru: 1 gru o 2 gru (tandem), peso di calcolo.
+- 2 · Punti di presa: per ogni gru 2 o 4 punti. "Prendi dalla selezione" (un punto per ogni elemento
+  selezionato: centro della faccia superiore o centro del pezzo) oppure "⌖ Clicca i punti" (si clicca
+  un punto dopo l'altro fino al numero scelto). Gli elementi scelti si colorano in magenta.
+- 3 · Gancio e funi: altezza del gancio sopra i punti di presa, sulla verticale del loro centro;
+  oppure "funi a lunghezza fissa" con la lunghezza: allora è la fune a fissare l'altezza del gancio.
+- 4 · Risultati: carico su ogni gru, lunghezza, angolo e tiro di ogni fune, avvisi di equilibrio.
+- Disegno: "Schema di sollevamento PDF/DXF" con prospetto, pianta, sezione, le gru, le funi F1…F8,
+  le quote dal baricentro e la tabella. Salva nel baricentro, copia per Excel, CSV.
+
+DATI DI PROGETTO E CARTIGLIO (versione 41)
+- Riquadro "Dati di progetto e cartiglio": cliente (logo accanto a WSC: METALSAN, SCL, BATEG,
+  altro con logo caricato dal computer, oppure nessuno), opera, committente, località,
+  commessa, elaborato, revisione, redatto, controllato, approvato, data (vuota = oggi).
+- I dati compilano il cartiglio di tutte le tavole e sono condivisi nel progetto.
+
 APPOGGI A TERRA DEL MACROCONCIO (versione 35)
 - Si sceglie il macroconcio (un baricentro del gruppo). Le travi sono tutte quelle trovate nel macroconcio.
 - I conci sono i tratti di trave (assiemi) fra un giunto e l'altro.
 - File di appoggi su tutte le travi scelte: per ogni concio a 1,50 m (modificabile) prima del giunto;
-  sul primo concio una fila in più simmetrica rispetto al suo baricentro; sull'ultimo concio una fila
-  vicino all'estremità (0,50 m se il campo è vuoto). Le file vanno sull'asse di irrigidimento più vicino.
+  sul primo concio una fila in più a 1,50 m dalla sua estremità libera; sull'ultimo concio una fila
+  alla stessa distanza dall'estremità (o a quella indicata). Le file restano alla distanza esatta; si portano sull'irrigidimento solo se ce n'è uno entro 0,30 m.
 - "Parti dall'altra estremità" inverte il verso: il concio 1 diventa quello all'altro capo.
 - Quote relative in m all'intradosso della piattabanda inferiore: la più bassa è ±0,000, le altre a salire.
 - Reazioni con il macroconcio rigido su tutti gli appoggi.
@@ -89,9 +113,10 @@ gruppo come conci affiancati, in ordine lungo l'asse.
     relative in mm rispetto all'appoggio più basso.
   - Reazioni: concio rigido su appoggi di uguale rigidezza, peso di calcolo
     della scheda.
-  - Tavola A3 PDF/DXF: prospetto della trave esterna con i conci colorati e
-    i baricentri, sezione A-A su una fila, pianta 1-1 dall'alto, pianta 2-2
-    dell'intradosso, tabella con coordinate e reazioni.
+  - Tavola A3 PDF/DXF (versione 37, stesso stile delle tavole dei golfari):
+    prospetto della trave esterna con i conci colorati e i baricentri, pianta
+    dall'alto con gli appoggi e le progressive, sezione A-A su una fila,
+    riepilogo di conci e reazioni, tabella con coordinate e reazioni.
   - Coordinate: copia per Excel o file CSV (modello e sistema del gruppo).
   - "Salva nel gruppo" condivide gli appoggi con i colleghi; i segni
     compaiono nel modello 3D.

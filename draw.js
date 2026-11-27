@@ -850,10 +850,10 @@
     // §3.13.1 geometria (tipo A)
     push('a', 'Distanza bordo foro a (§3.13.1)', FEd * 1000 * g.gM0 / (2 * t * fy) + 2 * d0 / 3, a, 'mm');
     push('c', 'Distanza bordo foro c (§3.13.1)', FEd * 1000 * g.gM0 / (2 * t * fy) + d0 / 3, c, 'mm');
-    // §3.13.2 rifollamento e pressione di contatto
+    // §3.13.2 rifollamento
     push('fb', 'Rifollamento SLU (§3.13.2)', FEd, 1.5 * t * d * fy / g.gM0 / 1000, 'kN');
     push('fbs', 'Rifollamento SLE (§3.13.2)', FEk, 0.6 * t * d * fy / g.gM6 / 1000, 'kN');
-    push('sh', 'Pressione di contatto (§3.13.2)', 0.591 * Math.sqrt(E * FEk * 1000 * (d0 - d) / (d * d * t)), 2.5 * fy / g.gM6, 'MPa');
+    // pressione di contatto (§3.13.2): non richiesta, tolta
     // sezione 1-1: taglio
     push('v11', 'Taglio sezione 1-1', FEd, 2 * t * a * (fy / Math.sqrt(3)) / g.gM0 / 1000, 'kN');
     // sezione 2-2: Von Mises
