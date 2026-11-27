@@ -67,6 +67,11 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+ASSE DELLA PIATTABANDA (versione 49)
+- I golfari si posano sull'asse del solo piatto della piattabanda superiore: se ne misurano i bordi
+  veri alla progressiva del golfare. Piattini e fazzoletti dei controventi accostati alla stessa quota
+  non spostano più l'asse e non allargano la piattabanda nelle sezioni della tavola di posizionamento.
+
 PANNELLO A CASCATA (versione 48)
 - Riquadro "Sollevamento, verifiche e tavole": si sceglie il baricentro, poi i passi
   1 Golfari · 2 Prese con gru su punti scelti · 3 Verifiche golfari e grilli · 4 Appoggi a terra ·

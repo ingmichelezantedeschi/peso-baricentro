@@ -492,8 +492,30 @@
       arr.forEach(s => { const l = merged[merged.length - 1]; if (l && s.u - l.u < 0.08) { l.u = (l.u * l.n + s.u) / (l.n + 1); l.n++; } else merged.push({u: s.u, n: 1, el: s.el}); });
       stations[gi] = merged; });
     // punto sulla piattabanda della trave gi alla progressiva u, con verifica dell'appoggio
+    /**
+     * asse vero della piattabanda superiore alla progressiva u: si prende il solo piatto della piattabanda
+     * (l'elemento che sta sotto l'asse trovato sulla griglia) e se ne misurano i bordi tagliandolo con il piano u,
+     * così piatti accostati alla stessa quota (fazzoletti dei controventi) non spostano l'asse né allargano la piattabanda.
+     */
+    const flCache = new Map();
+    function flangeAt(gi, u) {
+      const key = gi + ':' + Math.round(u * 20); if (flCache.has(key)) return flCache.get(key);
+      const g = girderAt(gi, u); let out = {...g, exact: false};
+      const sect = (o, uu) => { const m = els[o].m, P = m.pos, I = m.idx; let lo = Infinity, hi = -Infinity;
+        for (let t = 0; t < I.length; t += 3) for (let e = 0; e < 3; e++) { const a = I[t + e], b = I[t + (e + 1) % 3], A = toUV(P[a * 3], P[a * 3 + 1]), B = toUV(P[b * 3], P[b * 3 + 1]), ua = A[0] - uu, ub = B[0] - uu;
+          if ((ua < 0) === (ub < 0) || ua === ub) continue; const f = ua / (ua - ub), vv = A[1] + f * (B[1] - A[1]), zz = P[a * 3 + 2] + f * (P[b * 3 + 2] - P[a * 3 + 2]);
+          if (zz > g.z - 0.08 && zz < g.z + 0.08) { lo = Math.min(lo, vv); hi = Math.max(hi, vv); } }
+        return {lo, hi, w: hi - lo}; };
+      // elementi della superficie superiore attorno all'asse trovato sulla griglia, dal più presente
+      const cnt = new Map(), x0 = Math.round(gu(u)), y0 = Math.round(gv(g.v));
+      for (let x = x0 - 2; x <= x0 + 2; x++) for (let y = y0 - 4; y <= y0 + 4; y++) { if (x < 0 || y < 0 || x >= NU || y >= NV) continue; const o = owner[x * NV + y]; if (o >= 0 && !els[o].small && Math.abs(zt[x * NV + y] - g.z) < 0.08) cnt.set(o, (cnt.get(o) || 0) + 1 / (1 + Math.abs(y - y0))); }
+      const cands = [...cnt.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+      search: for (const o of cands) for (const uu of [u, u - 0.1, u + 0.1, u - 0.25, u + 0.25]) { const r = sect(o, uu);
+        if (isFinite(r.w) && r.w >= 0.25 && r.w <= 1.6 && g.v > r.lo - 0.05 && g.v < r.hi + 0.05) { out = {...g, v: (r.lo + r.hi) / 2, w: r.w, exact: true, el: o}; break search; } }
+      flCache.set(key, out); return out;
+    }
     function pointAt(gi, u, lugL = 0.55, lugW = 0.15) {
-      const g = girderAt(gi, u); const v = g.v;
+      const g = flangeAt(gi, u); const v = g.v;
       let tot = 0, ok = 0, zsum = 0, own = new Map();
       for (let du = -lugL / 2; du <= lugL / 2 + 1e-9; du += cell) for (let dv = -lugW / 2; dv <= lugW / 2 + 1e-9; dv += cell) {
         const x = Math.round(gu(u + du)), y = Math.round(gv(v + dv)); tot++;
@@ -510,7 +532,7 @@
       return {gi, u, v, x: xy[0], y: xy[1], z, d: Math.hypot(u, v), support: tot ? ok / tot : 0, el: main >= 0 ? els[main].m : null, studs, missing: !!g.missing};
     }
     const L = U1 - U0;
-    return {ax, pv, girders: g0, stations, pointAt, girderAt, strips, length: L, umin: U0, umax: U1, cell, toUV, fromUV, cogR, _dbg: {zt, NU, NV, U0, V0, els}};
+    return {ax, pv, girders: g0, stations, pointAt, girderAt, flangeAt, strips, length: L, umin: U0, umax: U1, cell, toUV, fromUV, cogR, _dbg: {zt, NU, NV, U0, V0, els}};
   }
 
   /** propone i golfari: n = 2 o 4; girders = indici delle travi; R = distanza imposta (null = automatico sugli assi) */
@@ -1012,7 +1034,7 @@
     const g = d.geo, Lp = g.L / 1000, tp = g.t / 1000, Hp = (g.ev + g.R) / 1000;
     const lugs = d.lugs.map(l => ({...l, L: toL(l.x, l.y, l.z)})).sort((a, b) => a.L[0] - b.L[0]);
     // bordi reali della piattabanda sotto ogni golfare: dal taglio della geometria alla progressiva del golfare
-    lugs.forEach(l => { let lo = Infinity, hi = -Infinity;
+    lugs.forEach(l => { if (l.exact) return; let lo = Infinity, hi = -Infinity;
       all.forEach(m => cutLines(m, 0, l.L[0] - 0.12).forEach(sg => sg.forEach(q => { if (Math.abs(q[2] - l.L[2]) < 0.08 && Math.abs(q[1] - l.gv) < l.gw / 2 + 0.25) { lo = Math.min(lo, q[1]); hi = Math.max(hi, q[1]); } })));
       if (isFinite(lo) && hi - lo > 0.1 && l.L[1] > lo && l.L[1] < hi) { l.gw = hi - lo; l.gv = (hi + lo) / 2; l.web = l.web ?? null; } });
     const P = [];
