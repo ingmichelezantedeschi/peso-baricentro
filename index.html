@@ -15,6 +15,14 @@ h1{font-size:15px;margin:0;font-weight:600}
 h2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:2px 0 0;font-weight:600}
 .muted{color:var(--muted)}
 .box{border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:7px}
+details.step{border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#fff}
+details.step[open]{border-color:var(--accent)}
+details.step>summary{font-weight:600;font-size:13px;cursor:pointer;color:var(--accent)}
+details.step>summary .note{font-weight:400}
+.stb{display:flex;flex-direction:column;gap:7px;margin-top:7px}
+.stb>.box,.stb>details.box{border:none;padding:0}
+.outg{border-top:1px solid var(--line);padding-top:6px;display:flex;flex-direction:column;gap:5px}
+.outg>b{font-size:12px}
 .big{font:600 22px/1.1 var(--f);font-variant-numeric:tabular-nums}
 .kv{display:grid;grid-template-columns:auto 1fr 1fr;gap:1px 8px;align-items:baseline}
 .kv .h{color:var(--muted);font-size:11px;text-align:right}
@@ -115,10 +123,28 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     <button class="sm" id="copy">Copia tabella</button>
   </div>
   <div class="row"><b style="font-size:12px">Tavole del gruppo:</b><button class="sm pri" id="gPdf">PDF</button><button class="sm" id="gDxf">DXF</button></div>
-  <div class="row"><button class="sm pri" id="supOpen" title="Appoggi provvisori a terra sotto le anime, in asse a diaframmi e irrigidimenti, per tutti i conci del gruppo">Appoggi a terra dei conci</button></div>
+  <button id="supOpen" hidden></button>
   <div class="row"><button class="sm" id="insIfc" title="Aggiunge funi, golfari, gancio e baricentro di tutti i sollevamenti salvati al file IFC del modello">Inserisci le funi nel modello IFC</button></div>
   <div id="cogList" style="display:flex;flex-direction:column;gap:6px"></div>
   <div class="note" id="gTot"></div>
+</section>
+
+<section class="box" id="work">
+  <div class="row"><h2 class="grow">Sollevamento, verifiche e tavole</h2></div>
+  <div class="row"><span class="note">Baricentro</span><select id="wCog" class="grow" aria-label="Baricentro su cui lavorare"></select></div>
+  <details class="step" id="stLug"><summary>1 · Golfari <span class="note" id="stLugS"></span></summary><div class="stb" id="stLugB"></div></details>
+  <details class="step" id="stGl"><summary>2 · Prese con gru su punti scelti <span class="note" id="stGlS"></span></summary><div class="stb" id="stGlB"></div></details>
+  <details class="step" id="stEc"><summary>3 · Verifiche golfari e grilli <span class="note" id="stEcS"></span></summary><div class="stb" id="stEcB"></div></details>
+  <details class="step" id="stSup"><summary>4 · Appoggi a terra <span class="note" id="stSupS"></span></summary><div class="stb" id="stSupB"></div></details>
+  <details class="step" id="stOut"><summary>5 · Messa in tavola</summary><div class="stb" id="stOutB">
+    <div id="outMsg" class="note"></div>
+    <div class="outg" id="outCog"><b>Baricentro</b><div class="row"><span class="note grow">Tavola del baricentro scelto</span><button class="sm pri" id="wPdf">PDF</button><button class="sm" id="wDxf">DXF</button></div></div>
+    <div class="outg" id="outGrp"><b>Tutto il gruppo</b></div>
+    <div class="outg" id="outLug"><b>Golfari</b></div>
+    <div class="outg" id="outGl"><b>Prese con gru</b></div>
+    <div class="outg" id="outSup"><b>Appoggi a terra</b></div>
+    <div class="outg" id="outFiles"><b>File preparati</b></div>
+  </div></details>
 </section>
 
 <section class="box" id="lugBox" hidden>
@@ -175,6 +201,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
         <label class="f">Forza fuori piano aggiuntiva (%)<input type="text" inputmode="decimal" data-ec="pOut"></label>
         <div class="f" style="justify-content:flex-end;grid-column:span 2"><button id="ecSave" class="pri" style="font-size:15px;font-weight:700;padding:9px 18px;border-radius:8px">💾 Salva golfari e verifica</button><span class="note" id="ecSaveMsg"></span></div>
       </div>
+      <div class="row" style="margin-top:8px"><b style="font-size:12px">Serie dei grilli</b><select id="ecSeries" style="width:auto"><option value="G-209">Crosby G-209 (perno a vite) · fino a 55 t</option><option value="G-4163">Green Pin G-4163 (dado e copiglia) · fino a 85 t</option></select><span id="ecShWarn"></span></div>
       <div id="ecSvg" style="margin-top:8px"></div>
       <div class="tw" style="margin-top:6px"><table class="lt" id="ecTab"></table></div>
       <div class="row" style="margin-top:6px"><b style="font-size:12px">Disegno d'officina del golfare:</b><button class="sm pri" id="shopPdf">PDF</button><button class="sm" id="shopDxf">DXF 1:1</button></div>
@@ -280,7 +307,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=46"></script>
+<script src="draw.js?v=48"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -290,7 +317,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '46 (27/11/2026)';
+  const PB_VERSION = '48 (27/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null, GL = null;
@@ -545,6 +572,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     for (const c of cogs) { try { await api.viewer.setObjectState(selector(await leafSel(c)), {color: PAL[color]}); } catch (e) {} }
   }
   async function focusCog(c, g) {
+    try { wSync(c); } catch (e) {}
     await highlight([c], g.color); hlCog = c.id; $('#showAll').setAttribute('aria-pressed', 'false');
     try { await api.viewer.setSelection(selector(await srcSel(c)), 'set'); } catch (e) {}
     render();
@@ -614,9 +642,10 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     $('#oX').value = g.origin.x.toFixed(3); $('#oY').value = g.origin.y.toFixed(3); $('#oZ').value = g.origin.z.toFixed(3); $('#oR').value = g.rot;
     $('#oSum').textContent = g.origin.x || g.origin.y || g.origin.z || g.rot ? `(${nf(g.origin.x, 2)}; ${nf(g.origin.y, 2)}; ${nf(g.origin.z, 2)}${g.rot ? '; ' + nf(g.rot, 1) + '°' : ''})` : '(origine del modello)';
     $('#oCog').innerHTML = '<option value="">Origine su un baricentro…</option>' + g.cogs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    try { wFill(); } catch (e) {}
     $('#cogList').innerHTML = g.cogs.map(c => { const r = rel(g, c.cog);
       return `<div class="cog ${hlCog === c.id ? 'on' : ''}" data-c="${c.id}" style="--c:${PAL[g.color]}" title="Clic: evidenzia gli elementi che lo hanno generato">
-        <div class="t"><span class="sw"></span><input value="${esc(c.name)}" data-rn="${c.id}" aria-label="Nome baricentro"><b class="mono" title="${c.Wcalc ? 'Peso di calcolo inserito a mano · dal modello ' + kgt(c.W) : 'Peso dal modello'}">${c.Wcalc ? nf(c.Wcalc, 2) + ' t ✎' : kgt(c.W)}</b><button class="sm" data-lug="${c.id}" title="Golfari di sollevamento">Golfari</button><button class="sm" data-gl="${c.id}" title="Presa con una o due gru su punti scelti">Presa</button><button class="sm" data-pdf="${c.id}" title="Tavola PDF">PDF</button><button class="sm" data-dxf="${c.id}" title="Tavola DXF">DXF</button><button class="sm x" data-del="${c.id}" aria-label="Elimina baricentro">×</button></div>
+        <div class="t"><span class="sw"></span><input value="${esc(c.name)}" data-rn="${c.id}" aria-label="Nome baricentro"><b class="mono" title="${c.Wcalc ? 'Peso di calcolo inserito a mano · dal modello ' + kgt(c.W) : 'Peso dal modello'}">${c.Wcalc ? nf(c.Wcalc, 2) + ' t ✎' : kgt(c.W)}</b><button class="sm x" data-del="${c.id}" aria-label="Elimina baricentro">×</button></div>
         <div class="d"><span>${c.n} el.</span><span>X ${nf(r[0], 3)}</span><span>Y ${nf(r[1], 3)}</span><span>Z ${nf(r[2], 3)}</span></div>
         ${c.Wcalc ? `<div class="note">Peso di calcolo ${nf(c.Wcalc, 2)} t inserito a mano · dal modello ${kgt(c.W)}</div>` : ''}
         ${c.lugs && lugStale(c) ? `<div class="note warn">Il concio è cambiato dopo il calcolo dei golfari: apri "Golfari", controlla e premi "Salva".</div>` : ''}
@@ -889,7 +918,6 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   async function openLugs(c, g) {
     if (!c) return;
     LUG = null; $('#lugBox').hidden = false; $('#lugForm').hidden = true; $('#lugName').textContent = c.name;
-    $('#lugBox').scrollIntoView({block: 'start', behavior: 'smooth'});
     lugMsg('Lettura della geometria del macroconcio…', true);
     try {
       const geo = await cogGeometry(c);
@@ -1104,6 +1132,9 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const tight = rows.filter(x => x.shJaw && tPl > x.shJaw - 2);
     const noRope = rows.filter(x => x.shObj && x.shObj.C && x.shObj.C - +((LUG && LUG.geoEff) || store.lugGeo).R <= 0);
     const ge2 = (LUG && LUG.geoEff) || store.lugGeo;
+    h += line('Grillo scelto', x => x.shackle ? `<td class="okc" title="portata ${nf(x.shCap, 2)} t">${esc(x.shackle.replace(/^Grillo\s+/i, ''))}</td>` : `<td class="koc" title="tiro ${nf(x.Td, 1)} t">nessuno</td>`);
+    { const noSh = rows.filter(x => !x.shackle), sr = store.catalog.series || 'G-209'; $('#ecSeries').value = sr;
+      $('#ecShWarn').innerHTML = noSh.length ? `<span class="ko">nessun grillo ${esc(sr)} regge il tiro di ${noSh.map(x => 'G' + x.k).join(', ')} (${nf(Math.max(...noSh.map(x => x.Td)), 1)} t)${sr === 'G-209' ? ': scegli G-4163' : ''}</span>` : ''; }
     h += line('Spazio per la fune C − R (mm)', x => x.shObj && x.shObj.C ? (gp => `<td class="${gp <= 0 ? 'koc' : 'okc'}" title="${esc(x.shackle || '')}: C = ${x.shObj.C} mm, R = ${ge2.R} mm">${nf(gp, 0)}</td>`)(x.shObj.C - ge2.R) : '<td>–</td>');
     h += line('Spessore piastra / apertura grillo A', x => x.shJaw ? `<td class="${tPl > x.shJaw - 2 ? 'koc' : 'okc'}" title="${esc(x.shackle || '')}: A = ${x.shJaw} mm">${nf(tPl, 0)} / ${x.shJaw}</td>` : '<td>–</td>');
     $('#ecTab').innerHTML = h;
@@ -1178,6 +1209,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   function lugResetCustom() { if (LUG) LUG.custom = {}; }
   $('#lugReset').onclick = () => { lugResetCustom(); computeLugs(); };
   $('#lugFd').onchange = computeLugs; $('#lugSkl').onchange = computeLugs;
+  $('#ecSeries').onchange = () => { $('#catSeries').value = $('#ecSeries').value; $('#catSeries').onchange(); };
   $('#catSeries').onchange = () => { const sr = $('#catSeries').value; $('#catSh').value = SHACKLE_SERIES[sr]; store.catalog = {...store.catalog, series: sr, shackles: SHACKLE_SERIES[sr]}; store.catalogT = Date.now(); store.dirty = true; save(); computeLugs(); };
   $('#catLug').onchange = $('#catSh').onchange = () => { store.catalog = {lugs: $('#catLug').value, shackles: $('#catSh').value, series: $('#catSeries').value}; store.catalogT = Date.now(); store.dirty = true; save(); computeLugs(); };
   $('#lugAnchor').onchange = () => computeLugs();
@@ -1292,7 +1324,6 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   async function openSups(g, mi) {
     if (!g || !g.cogs.length) { setState('<span class="warn">Il gruppo non ha conci: salva prima un baricentro per ogni concio.</span>'); return; }
     SUP = null; $('#supBox').hidden = false; $('#supForm').hidden = true; $('#supName').textContent = g.name;
-    $('#supBox').scrollIntoView({block: 'start', behavior: 'smooth'});
     const sv0 = g.sups || {};
     if (mi == null) { mi = g.cogs.findIndex(c => c.id === sv0.macro); if (mi < 0) mi = 0; }
     $('#supMacro').innerHTML = g.cogs.map((c, i) => `<option value="${i}">${esc(c.name)} · ${nf(c.Wcalc || c.W / 1000, 2)} t</option>`).join(''); $('#supMacro').value = String(mi);
@@ -1416,9 +1447,8 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const GL_COL = '#d60093';
   function openGl(c, g) {
     if (!c) return; const sv = c.glift || {};
-    if (LUG) { $('#lugBox').hidden = true; LUG = null; } // nessun golfare proposto: si parte solo dai punti scelti
     GL = {c, g, pts: (sv.points || []).map(p => ({...p})), cnt: sv.cnt ? [...sv.cnt] : [4, 4]};
-    $('#glBox').hidden = false; $('#glName').textContent = c.name; $('#glBox').scrollIntoView({block: 'start', behavior: 'smooth'});
+    $('#glBox').hidden = false; $('#glName').textContent = c.name;
     $('#glN').value = String(sv.cranes || 2); $('#glW').value = dec(sv.W || c.Wcalc || c.W / 1000, 2);
     $('#glH').value = dec(sv.H || 6, 2); $('#glFix').checked = !!sv.fix; $('#glL').value = dec(sv.L || 8, 2);
     glMsg(`Baricentro "${esc(c.name)}": ${nf(c.Wcalc || c.W / 1000, 2)} t. ` + (GL.pts.length ? `Punti salvati: ${GL.pts.length}.` : 'Nessun punto di presa: scegli tu dove prendere il carico, gru per gru.'));
@@ -1516,6 +1546,50 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     } catch (e) { glMsg('<span class="ko">Tavola non riuscita: ' + esc(e && e.message || e) + '</span>'); }
   }
   $('#glPdf').onclick = () => glExport('pdf'); $('#glDxf').onclick = () => glExport('dxf');
+
+  // ================= menu a cascata: golfari, prese, verifiche, appoggi, messa in tavola =================
+  let wId = null; // baricentro su cui si lavora
+  const wSel = () => { const g = G(); const c = g.cogs.find(x => x.id === wId) || g.cogs.find(x => x.id === hlCog) || g.cogs[0] || null; return {c, g}; };
+  function wFill() { const g = G(), {c} = wSel(); $('#wCog').innerHTML = g.cogs.length ? g.cogs.map(x => `<option value="${x.id}">${esc(x.name)} · ${x.Wcalc ? nf(x.Wcalc, 2) + ' t' : kgt(x.W)}</option>`).join('') : '<option value="">nessun baricentro nel gruppo</option>';
+    if (c) { $('#wCog').value = String(c.id); wId = c.id; }
+    $('#stLugS').textContent = c && c.lugs ? `· ${c.lugs.n} golfari salvati` : ''; $('#stGlS').textContent = c && c.glift && c.glift.points && c.glift.points.length ? `· ${c.glift.cranes} gru, ${c.glift.points.length} funi salvate` : '';
+    $('#stSupS').textContent = g.sups ? '· appoggi salvati' : ''; }
+  function wSync(c) { if (!c || c.id === wId) return; wId = c.id; wFill(); wReopen(); }
+  async function wReopen() { const {c, g} = wSel(); if (!c) return;
+    if ($('#stLug').open || $('#stEc').open) { if (!LUG || LUG.c !== c) await openLugs(c, g); }
+    if ($('#stGl').open && (!GL || GL.c !== c)) openGl(c, g); }
+  async function ensureLug() { const {c, g} = wSel(); if (!c) throw new Error('nessun baricentro'); if (!LUG || LUG.c !== c) await openLugs(c, g); }
+  function ensureGl() { const {c, g} = wSel(); if (c && (!GL || GL.c !== c)) openGl(c, g); }
+  async function ensureSup() { const g = G(); if (!SUP || SUP.g !== g) await openSups(g); }
+  $('#wCog').onchange = () => { const {g} = wSel(), c = g.cogs.find(x => x.id === +$('#wCog').value); if (c) focusCog(c, g); };
+  { const mv = (el, dest) => { if (el) $(dest).appendChild(el); };
+    // contenuti nei passi
+    mv($('#lugBox'), '#stLugB'); mv($('#glBox'), '#stGlB'); mv($('#supBox'), '#stSupB');
+    mv($('#catSeries').closest('details'), '#stEcB'); mv($('#ecBox'), '#stEcB');
+    ['#lugBox', '#glBox', '#supBox'].forEach(k => { const hd = $(k).querySelector('h2'); if (hd) hd.closest('.row').hidden = true; });
+    $('#catSeries').closest('details').open = true;
+    // messa in tavola: le righe dei tasti di esportazione
+    const wrap = (btn, ensure, stateSel) => { if (!btn) return; const orig = btn.onclick; btn.onclick = async e => { $('#outMsg').innerHTML = '<span class="spin"></span>Preparazione…';
+      try { if (ensure) await ensure(); await (orig && orig.call(btn, e)); } catch (err) { $('#outMsg').innerHTML = '<span class="ko">' + esc(err && err.message || err) + '</span>'; return; }
+      $('#outMsg').innerHTML = stateSel && $(stateSel) ? $(stateSel).innerHTML : ''; }; };
+    const row = id => $(id) && $(id).closest('.row');
+    mv(row('#gPdf'), '#outGrp'); mv(row('#insIfc'), '#outGrp');
+    { const r = document.createElement('div'); r.className = 'row'; r.innerHTML = '<span class="note grow">Tabella dei baricentri del gruppo</span>'; r.appendChild($('#copy')); $('#outGrp').appendChild(r); }
+    [row('#lugPdf'), row('#lugPdfO'), row('#layRef'), row('#shopPdf')].forEach(r => mv(r, '#outLug'));
+    mv(row('#glPdf'), '#outGl'); mv(row('#supPdf'), '#outSup');
+    ['#lugFiles', '#glFiles', '#supFiles'].forEach(k => mv($(k), '#outFiles')); mv($('#exp'), '#outFiles'); mv($('#prjBox'), '#stOutB');
+    const lbl = (id, t) => { const r = row(id), b = r && r.querySelector('b'); if (b) b.textContent = t; };
+    lbl('#gPdf', 'Tavole di tutti i baricentri:'); lbl('#lugPdf', 'Schema di sollevamento:'); lbl('#lugPdfO', 'Schema, solo sagoma:'); lbl('#layRef', 'Posizionamento golfari:'); lbl('#shopPdf', 'Officina del golfare:'); lbl('#glPdf', 'Schema di sollevamento:'); lbl('#supPdf', 'Tavola appoggi:');
+    [['#lugPdf', 'PDF'], ['#lugIfc', 'IFC funi e golfari'], ['#lugPdfO', 'PDF'], ['#lugDxfO', 'DXF'], ['#glPdf', 'PDF'], ['#shopDxf', 'DXF 1:1']].forEach(([k, t]) => { if ($(k)) $(k).textContent = t; });
+    ['#lugPdf', '#lugDxf', '#lugIfc', '#lugPdfO', '#lugDxfO', '#layPdf', '#layDxf', '#shopPdf', '#shopDxf'].forEach(k => wrap($(k), ensureLug, '#lugState'));
+    ['#glPdf', '#glDxf'].forEach(k => wrap($(k), ensureGl, '#glState')); ['#supPdf', '#supDxf'].forEach(k => wrap($(k), ensureSup, '#supState'));
+    $('#wPdf').onclick = () => { const {c, g} = wSel(); if (c) exportCogs([c], g, 'pdf'); }; $('#wDxf').onclick = () => { const {c, g} = wSel(); if (c) exportCogs([c], g, 'dxf'); };
+    // aprendo un passo si prepara il calcolo del baricentro scelto
+    $('#stLug').ontoggle = () => { if ($('#stLug').open) ensureLug().catch(() => {}); };
+    $('#stEc').ontoggle = () => { if ($('#stEc').open) ensureLug().catch(() => {}); };
+    $('#stGl').ontoggle = () => { if ($('#stGl').open) ensureGl(); };
+    $('#stSup').ontoggle = () => { if ($('#stSup').open) ensureSup(); };
+    wFill(); }
 
   // ================= dati di progetto e cartiglio =================
   function fillPrj() {

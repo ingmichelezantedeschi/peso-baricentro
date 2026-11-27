@@ -67,6 +67,13 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+PANNELLO A CASCATA (versione 48)
+- Riquadro "Sollevamento, verifiche e tavole": si sceglie il baricentro, poi i passi
+  1 Golfari · 2 Prese con gru su punti scelti · 3 Verifiche golfari e grilli · 4 Appoggi a terra ·
+  5 Messa in tavola (tutte le tavole PDF/DXF, IFC, dati di progetto e cartiglio).
+- Nel gruppo restano solo origine, evidenziazione e segni nel modello; nelle schede dei baricentri
+  solo nome, peso, aggiungi/togli selezione ed elimina.
+
 GRILLI E VERIFICA DEL GOLFARE (versione 46)
 - Golfari › "Catalogo golfari e grilli": "Serie dei grilli" Crosby G-209 o Green Pin G-4163.
   Il programma sceglie sempre il grillo della serie in base al tiro (e il foro sul grillo maggiore).
