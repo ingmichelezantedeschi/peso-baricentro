@@ -198,7 +198,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     <div><div class="note">Travi con gli appoggi (sotto l'anima):</div><div id="supGirders" class="row"></div></div>
     <div class="g4">
       <label class="f">Distanza dai giunti (m)<input type="text" inputmode="decimal" id="supDJ" value="1,50"></label>
-      <label class="f" title="Fila sull'ultimo concio, misurata dall'estremità libera">Ultimo concio, dall'estremità (m)<input type="text" inputmode="decimal" id="supFree" placeholder="0,50"></label>
+      <label class="f" title="File sulle due estremità libere del macroconcio; vuoto = come dai giunti">Estremità libere del macroconcio (m)<input type="text" inputmode="decimal" id="supFree" placeholder="= dai giunti"></label>
       <label class="f">Sella lungo l'asse (m)<input type="text" inputmode="decimal" id="supLs" value="0,40"></label>
       <label class="f">Sella trasversale (m)<input type="text" inputmode="decimal" id="supBs" value="0,40"></label>
       <label class="f">Altezza appoggi in tavola (m)<input type="text" inputmode="decimal" id="supHs" value="0,80"></label>
@@ -209,8 +209,29 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     <div class="row"><button class="sm pri" id="supSave">Salva nel gruppo</button><button class="sm" id="supCopy">Copia coordinate</button><button class="sm" id="supCsv">Coordinate CSV</button><button class="sm" id="supReset" title="Torna alla proposta automatica">Annulla spostamenti</button></div>
     <div class="row"><b style="font-size:12px">Tavola appoggi:</b><button class="sm pri" id="supPdf">PDF</button><button class="sm" id="supDxf">DXF</button></div>
     <div id="supFiles" style="display:flex;flex-direction:column;gap:3px"></div>
-    <div class="note">Appoggi su tutte le travi scelte del macroconcio, sotto l'anima e in asse a diaframmi o irrigidimenti. I conci sono i tratti di trave fra un giunto e l'altro. Ogni concio ha una fila alla distanza indicata prima del giunto; il primo concio ha in più una fila simmetrica rispetto al suo baricentro; l'ultimo concio ha una fila alla distanza indicata dalla sua estremità. ‹ › spostano la fila all'asse precedente o successivo, ⌖ la porta sul punto cliccato nel modello.</div>
+    <div class="note">Appoggi su tutte le travi scelte del macroconcio, sotto l'anima e in asse a diaframmi o irrigidimenti. I conci sono i tratti di trave fra un giunto e l'altro. Ogni concio ha una fila alla distanza indicata dal bordo del pezzo, prima del giunto; il primo concio ha in più una fila alla stessa distanza dalla sua estremità libera; l'ultimo concio ha la fila a quella distanza dalla sua estremità. La fila si porta sull'irrigidimento solo se ce n'è uno entro 0,30 m. ‹ › spostano la fila all'asse precedente o successivo, ⌖ la porta sul punto cliccato nel modello.</div>
     <div class="note">Quota Z = intradosso della piattabanda inferiore. Quota relativa in m dell'intradosso della piattabanda inferiore: la più bassa è +0,000, le altre a salire. Reazioni con il macroconcio rigido su appoggi di uguale rigidezza, dal peso di calcolo del concio (scheda del baricentro). Coordinate nel sistema del modello e in quello del gruppo (origine e rotazione del gruppo). Valori indicativi da verificare.</div>
+  </div>
+</section>
+
+<section class="box" id="glBox" hidden>
+  <div class="row"><h2 class="grow">Presa con gru · <span id="glName"></span></h2><button class="sm" id="glClose">Chiudi</button></div>
+  <div id="glState" class="note"></div>
+  <div id="glForm" style="display:flex;flex-direction:column;gap:7px">
+    <div class="g4">
+      <label class="f">Gru<select id="glN"><option value="1">1 gru</option><option value="2">2 gru (tandem)</option></select></label>
+      <label class="f">Peso di calcolo (t)<input type="text" inputmode="decimal" id="glW"></label>
+      <label class="f">Funi date da<select id="glMode"><option value="L">lunghezza (m)</option><option value="A">angolo sull'orizzontale (°)</option></select></label>
+      <label class="f"><span id="glValL">Lunghezza funi (m)</span><input type="text" inputmode="decimal" id="glVal" value="8,00"></label>
+    </div>
+    <label class="row" id="glEqRow"><input type="checkbox" id="glEq"> funi tutte esattamente lunghe uguali: il gancio si sposta dalla verticale del centro dei punti</label>
+    <div class="row"><span class="note">Punto preso dall'elemento selezionato:</span><select id="glFrom" style="width:auto"><option value="c">centro del pezzo</option><option value="t">centro della faccia superiore</option></select></div>
+    <div id="glCranes" style="display:flex;flex-direction:column;gap:4px"></div>
+    <div id="glSum" class="note"></div>
+    <div class="tw"><table class="lt" id="glTab"></table></div>
+    <div class="row"><button class="sm pri" id="glSave">Salva nel baricentro</button><button class="sm" id="glCopy">Copia tabella</button><button class="sm" id="glCsv">CSV</button><button class="sm" id="glClear">Togli tutti i punti</button></div>
+    <div id="glFiles" style="display:flex;flex-direction:column;gap:3px"></div>
+    <div class="note">Per ogni gru: "+ Dalla selezione" aggiunge un punto per ogni elemento selezionato nel modello, "⌖ Clic nel modello" aggiunge il punto cliccato. Il gancio sta sulla verticale del centro dei punti della sua gru; con la lunghezza nessuna fune supera il valore dato, con l'angolo nessuna fune scende sotto l'angolo dato. Tiri dall'equilibrio del corpo rigido con risultante verticale su ogni gancio. Valori indicativi da verificare.</div>
   </div>
 </section>
 
@@ -220,6 +241,27 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   <div class="row" id="ifcPick" hidden><label class="b" style="display:inline-block"><input type="file" id="ifcFile" accept=".ifc" hidden><button class="sm pri" id="ifcBtn" type="button">Scegli il file IFC dal computer</button></label></div>
   <div id="files" style="display:flex;flex-direction:column;gap:3px"></div>
 </section>
+
+<details class="box" id="prjBox">
+  <summary>Dati di progetto e cartiglio <span class="note" id="prjSum"></span></summary>
+  <div style="display:flex;flex-direction:column;gap:7px;margin-top:6px">
+    <div class="row"><label class="f" style="flex:1">Cliente (logo accanto a WSC)<select id="prjClient"><option value="METALSAN">METALSAN</option><option value="SCL">SCL Costruzioni</option><option value="BATEG">BATEG</option><option value="ALTRO">Altro: carica un logo…</option><option value="NESSUNO">Nessun logo cliente</option></select></label></div>
+    <div class="row" id="prjCustom" hidden><input type="text" id="prjCName" placeholder="Nome del cliente" style="flex:1"><label class="b" style="display:inline-block"><input type="file" id="prjLogo" accept="image/png,image/jpeg" hidden><button class="sm" id="prjLogoBtn" type="button">Carica logo (PNG/JPG)</button></label><img id="prjLogoPrev" alt="" style="max-height:28px;max-width:110px"></div>
+    <div class="g3">
+      <label class="f" style="grid-column:span 3">Opera / titolo del lavoro<input type="text" data-prj="opera" placeholder="vuoto = nome del progetto Trimble"></label>
+      <label class="f" style="grid-column:span 2">Committente<input type="text" data-prj="committente"></label>
+      <label class="f">Località<input type="text" data-prj="localita"></label>
+      <label class="f">Commessa<input type="text" data-prj="commessa"></label>
+      <label class="f">Elaborato / n. tavola<input type="text" data-prj="elaborato"></label>
+      <label class="f">Revisione<input type="text" data-prj="rev"></label>
+      <label class="f">Redatto<input type="text" data-prj="redatto"></label>
+      <label class="f">Controllato<input type="text" data-prj="controllato"></label>
+      <label class="f">Approvato<input type="text" data-prj="approvato"></label>
+      <label class="f">Data<input type="text" data-prj="data" placeholder="vuoto = oggi"></label>
+    </div>
+    <div class="note">Questi dati compilano il cartiglio di tutte le tavole (baricentro, sollevamento, golfari, officina, appoggi) e sono condivisi con i colleghi del progetto.</div>
+  </div>
+</details>
 
 <details class="box">
   <summary>Impostazioni</summary>
@@ -233,7 +275,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=35"></script>
+<script src="draw.js?v=42"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -243,10 +285,10 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '35 (26/11/2026)';
+  const PB_VERSION = '42 (27/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
-  let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null;
+  let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null, GL = null;
 
   if (window.parent === window) { setState('<span class="warn">Questa pagina funziona solo dentro Trimble Connect: aggiungi l\'estensione al progetto con l\'indirizzo del manifest e aprila dal visualizzatore 3D.</span>'); return; }
   try {
@@ -268,6 +310,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   if (!store || !store.groups || !store.groups.length) store = {groups: [newGroup('Gruppo 1', 0)], active: 0, nextIcon: 1000, pristine: true};
   store.deleted ||= {g: [], c: []};
   store.lugGeo = {...PBDraw.LUG_GEO_DEFAULT, ...(store.lugGeo || {})};
+  store.sheet = {client: 'METALSAN', custom: null, info: {}, ...(store.sheet || {})}; PBDraw.setSheet(store.sheet);
   // catalogo grilli Crosby G-209 / S-209 (01_Shackles_MET_24.pdf): nome ; WLL t ; perno B ; apertura A ; lunghezza interna C ; diametro arco D ; larghezza interna arco E (mm)
   const SHACKLES_G209 = 'Grillo G-209 3/16" 0,33 t ; 0,33 ; 6 ; 10 ; 22 ; 5 ; 15\nGrillo G-209 1/4" 0,5 t ; 0,5 ; 8 ; 12 ; 29 ; 6 ; 20\nGrillo G-209 5/16" 0,75 t ; 0,75 ; 10 ; 14 ; 31 ; 8 ; 21\nGrillo G-209 3/8" 1 t ; 1 ; 11 ; 17 ; 37 ; 10 ; 26\nGrillo G-209 7/16" 1,5 t ; 1,5 ; 13 ; 19 ; 43 ; 11 ; 30\nGrillo G-209 1/2" 2 t ; 2 ; 16 ; 21 ; 48 ; 13 ; 33\nGrillo G-209 5/8" 3,25 t ; 3,25 ; 19 ; 27 ; 60 ; 16 ; 43\nGrillo G-209 3/4" 4,75 t ; 4,75 ; 22 ; 32 ; 71 ; 19 ; 51\nGrillo G-209 7/8" 6,5 t ; 6,5 ; 25 ; 37 ; 84 ; 22 ; 58\nGrillo G-209 1" 8,5 t ; 8,5 ; 30 ; 43 ; 96 ; 25 ; 68\nGrillo G-209 1-1/8" 9,5 t ; 9,5 ; 32 ; 46 ; 108 ; 30 ; 74\nGrillo G-209 1-1/4" 12 t ; 12 ; 36 ; 52 ; 119 ; 33 ; 83\nGrillo G-209 1-3/8" 13,5 t ; 13,5 ; 40 ; 57 ; 133 ; 36 ; 92\nGrillo G-209 1-1/2" 17 t ; 17 ; 42 ; 60 ; 146 ; 39 ; 99\nGrillo G-209 1-3/4" 25 t ; 25 ; 52 ; 73 ; 178 ; 47 ; 127\nGrillo G-209 2" 35 t ; 35 ; 58 ; 83 ; 197 ; 53 ; 146\nGrillo G-209 2-1/2" 55 t ; 55 ; 71 ; 105 ; 267 ; 69 ; 184';
   if ((store.catalogV || 0) < 3) { store.catalog = {...(store.catalog || {}), shackles: SHACKLES_G209}; store.catalogV = 3; store.catalogT = Date.now(); store.dirty = true; }
@@ -451,6 +494,9 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       const pts = (LUG && LUG.c === c && LUG.preview) ? LUG.preview : (c.lugs && !lugStale(c) ? c.lugs.points : []);
       pts.forEach((p, k) => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: p.x, y: p.y, z: p.z + 0.15}, size: 26}));
     }));
+    store.groups.forEach(g => g.cogs.forEach(c => { const gl = (GL && GL.c === c) ? GL.view : c.glift; if (!gl || !gl.points) return;
+      gl.points.forEach(p => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: p.x, y: p.y, z: p.z + 0.1}, size: 26}));
+      (gl.hooks || []).forEach(h => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: h.x, y: h.y, z: h.z}, size: 34})); }));
     const supUrl = new URL('sup.png?v=1', location.href).href;
     store.groups.forEach(g => { const pts = (SUP && SUP.g === g && SUP.preview) ? SUP.preview : (g.sups && !supStale(g) ? g.sups.points : []);
       pts.forEach(p => { if (isFinite(p.Z)) icons.push({id: nid(-1), iconPath: supUrl, position: {x: p.X, y: p.Y, z: p.Z - 0.12}, size: 24}); }); });
@@ -511,6 +557,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   async function onPicked(d) {
     if (!d || !d.position) return;
     if (pickMode && String(pickMode).startsWith('sup:')) { const key = String(pickMode).slice(4); pickMode = null; try { await api.viewer.activateTool('reset'); } catch (e) {} supPicked(key, d.position); return; }
+    if (pickMode && String(pickMode).startsWith('gl:')) { const k = +String(pickMode).slice(3); pickMode = null; try { await api.viewer.activateTool('reset'); } catch (e) {} glAddPoint(k, [d.position.x, d.position.y, d.position.z], 'clic'); return; }
     if (pickMode && String(pickMode).startsWith('lug:')) { const k = +String(pickMode).slice(4); pickMode = null; try { await api.viewer.activateTool('reset'); } catch (e) {} lugPicked(k, d.position); return; }
     const g = G(), p = d.position, mode = pickMode;
     pickMode = null; $('#oPick').setAttribute('aria-pressed', 'false'); $('#axPick').setAttribute('aria-pressed', 'false');
@@ -560,16 +607,18 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     $('#oCog').innerHTML = '<option value="">Origine su un baricentro…</option>' + g.cogs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     $('#cogList').innerHTML = g.cogs.map(c => { const r = rel(g, c.cog);
       return `<div class="cog ${hlCog === c.id ? 'on' : ''}" data-c="${c.id}" style="--c:${PAL[g.color]}" title="Clic: evidenzia gli elementi che lo hanno generato">
-        <div class="t"><span class="sw"></span><input value="${esc(c.name)}" data-rn="${c.id}" aria-label="Nome baricentro"><b class="mono" title="${c.Wcalc ? 'Peso di calcolo inserito a mano · dal modello ' + kgt(c.W) : 'Peso dal modello'}">${c.Wcalc ? nf(c.Wcalc, 2) + ' t ✎' : kgt(c.W)}</b><button class="sm" data-lug="${c.id}" title="Golfari di sollevamento">Golfari</button><button class="sm" data-pdf="${c.id}" title="Tavola PDF">PDF</button><button class="sm" data-dxf="${c.id}" title="Tavola DXF">DXF</button><button class="sm x" data-del="${c.id}" aria-label="Elimina baricentro">×</button></div>
+        <div class="t"><span class="sw"></span><input value="${esc(c.name)}" data-rn="${c.id}" aria-label="Nome baricentro"><b class="mono" title="${c.Wcalc ? 'Peso di calcolo inserito a mano · dal modello ' + kgt(c.W) : 'Peso dal modello'}">${c.Wcalc ? nf(c.Wcalc, 2) + ' t ✎' : kgt(c.W)}</b><button class="sm" data-lug="${c.id}" title="Golfari di sollevamento">Golfari</button><button class="sm" data-gl="${c.id}" title="Presa con una o due gru su punti scelti">Presa</button><button class="sm" data-pdf="${c.id}" title="Tavola PDF">PDF</button><button class="sm" data-dxf="${c.id}" title="Tavola DXF">DXF</button><button class="sm x" data-del="${c.id}" aria-label="Elimina baricentro">×</button></div>
         <div class="d"><span>${c.n} el.</span><span>X ${nf(r[0], 3)}</span><span>Y ${nf(r[1], 3)}</span><span>Z ${nf(r[2], 3)}</span></div>
         ${c.Wcalc ? `<div class="note">Peso di calcolo ${nf(c.Wcalc, 2)} t inserito a mano · dal modello ${kgt(c.W)}</div>` : ''}
         ${c.lugs && lugStale(c) ? `<div class="note warn">Il concio è cambiato dopo il calcolo dei golfari: apri "Golfari", controlla e premi "Salva".</div>` : ''}
         ${c.lugs && !lugStale(c) ? `<div class="note">Golfari: ${c.lugs.n} a ${nf(c.lugs.R, 2)} m dal baricentro · tiro max ${nf(Math.max(...c.lugs.points.map(p => p.T)), 1)} t</div>` : ''}
+        ${c.glift && c.glift.hooks && c.glift.hooks.length ? `<div class="note">Presa: ${c.glift.hooks.length} gru, ${c.glift.points.length} funi · ${c.glift.hooks.map(h => `gru ${h.c + 1} ${nf(h.V, 1)} t`).join(' · ')}</div>` : ''}
         <div class="row"><button class="sm" data-add="${c.id}" title="Aggiunge a questo baricentro gli elementi selezionati ora nel modello" ${cur ? '' : 'disabled'}>+ Aggiungi selezione</button><button class="sm" data-rem="${c.id}" title="Toglie da questo baricentro gli elementi selezionati ora nel modello" ${cur ? '' : 'disabled'}>− Togli selezione</button></div></div>`; }).join('') ||
       '<div class="note">Nessun baricentro in questo gruppo. Seleziona degli elementi nel modello e premi "+ Salva nel gruppo".</div>';
     $('#cogList').querySelectorAll('.cog').forEach(el => el.onclick = ev => { if (ev.target.closest('input,button')) return; const c = g.cogs.find(x => x.id === +el.dataset.c); if (c) focusCog(c, g); });
     $('#cogList').querySelectorAll('[data-rn]').forEach(el => el.onchange = () => { const c = g.cogs.find(x => x.id === +el.dataset.rn); c.name = el.value || c.name; save(); render(); });
     $('#cogList').querySelectorAll('[data-lug]').forEach(el => el.onclick = () => openLugs(g.cogs.find(x => x.id === +el.dataset.lug), g));
+    $('#cogList').querySelectorAll('[data-gl]').forEach(el => el.onclick = () => openGl(g.cogs.find(x => x.id === +el.dataset.gl), g));
     $('#cogList').querySelectorAll('[data-add]').forEach(el => el.onclick = () => editCog(g.cogs.find(x => x.id === +el.dataset.add), g, 'add'));
     $('#cogList').querySelectorAll('[data-rem]').forEach(el => el.onclick = () => editCog(g.cogs.find(x => x.id === +el.dataset.rem), g, 'rem'));
     $('#cogList').querySelectorAll('[data-pdf]').forEach(el => el.onclick = () => exportCogs([g.cogs.find(x => x.id === +el.dataset.pdf)], g, 'pdf'));
@@ -633,8 +682,8 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     const d = await fetch(url); if (!d.ok) throw new Error('lettura del file condiviso: HTTP ' + d.status);
     return {ver: it.versionId, data: await d.json()};
   }
-  const docOf = () => ({format: 'peso-baricentro', v: 1, saved: new Date().toISOString(), groups: store.groups, deleted: store.deleted, catalog: store.catalog, catalogT: store.catalogT || 0});
-  const norm = d => JSON.stringify({cat: d.catalogT || 0, g: (d.groups || []).map(g => ({...g, cogs: g.cogs.slice().sort((a, b) => a.id - b.id)})).sort((a, b) => a.id - b.id), d: {g: [...(d.deleted || {}).g || []].sort(), c: [...(d.deleted || {}).c || []].sort()}});
+  const docOf = () => ({format: 'peso-baricentro', v: 1, saved: new Date().toISOString(), groups: store.groups, deleted: store.deleted, catalog: store.catalog, catalogT: store.catalogT || 0, lugGeo: store.lugGeo, lugGeoT: store.lugGeoT || 0, sheet: store.sheet, sheetT: store.sheetT || 0});
+  const norm = d => JSON.stringify({cat: d.catalogT || 0, lg: d.lugGeoT || 0, sh: d.sheetT || 0, g: (d.groups || []).map(g => ({...g, cogs: g.cogs.slice().sort((a, b) => a.id - b.id)})).sort((a, b) => a.id - b.id), d: {g: [...(d.deleted || {}).g || []].sort(), c: [...(d.deleted || {}).c || []].sort()}});
   async function sharedUpload() {
     const doc = docOf(), bytes = new TextEncoder().encode(JSON.stringify(doc));
     // caricamento in 3 passaggi (Package File Upload): avvio, invio del contenuto, attesa del completamento
@@ -673,6 +722,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     }
     if (rd.catalog && (rd.catalogT || 0) > (store.catalogT || 0)) { store.catalog = clone(rd.catalog); store.catalogT = rd.catalogT; }
     if (rd.lugGeo && (rd.lugGeoT || 0) > (store.lugGeoT || 0)) { store.lugGeo = {...PBDraw.LUG_GEO_DEFAULT, ...clone(rd.lugGeo)}; store.lugGeoT = rd.lugGeoT; try { fillEc(); } catch (e) {} }
+    if (rd.sheet && (rd.sheetT || 0) > (store.sheetT || 0)) { store.sheet = clone(rd.sheet); store.sheetT = rd.sheetT; try { fillPrj(); } catch (e) {} }
     if (!store.groups.length) store.groups.push(newGroup('Gruppo 1', 0));
     store.active = Math.max(0, Math.min(store.active || 0, store.groups.length - 1));
     resetSigs();
@@ -1350,6 +1400,86 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
   $('#gPdf').onclick = () => exportCogs(G().cogs, G(), 'pdf');
   $('#gDxf').onclick = () => exportCogs(G().cogs, G(), 'dxf');
+
+  // ================= presa generica con una o due gru =================
+  const glMsg = (t, busy) => { $('#glState').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
+  function openGl(c, g) {
+    if (!c) return; const sv = c.glift || {};
+    GL = {c, g, pts: (sv.points || []).map(p => ({...p}))};
+    $('#glBox').hidden = false; $('#glName').textContent = c.name; $('#glBox').scrollIntoView({block: 'start', behavior: 'smooth'});
+    $('#glN').value = String(sv.cranes || 2); $('#glMode').value = sv.mode || 'L'; $('#glVal').value = dec(sv.val || (sv.mode === 'A' ? 60 : 8), sv.mode === 'A' ? 1 : 2);
+    $('#glEq').checked = !!sv.eq; $('#glW').value = dec(c.Wcalc || c.W / 1000, 2);
+    glMsg(`Baricentro "${esc(c.name)}": ${nf(c.Wcalc || c.W / 1000, 2)} t. Scegli i punti di presa di ogni gru.`);
+    glCompute();
+  }
+  function glCfg() { return {cranes: +$('#glN').value, mode: $('#glMode').value, val: numv('#glVal'), eq: $('#glMode').value === 'L' && $('#glEq').checked, W: numv('#glW') > 0 ? numv('#glW') : (GL.c.Wcalc || GL.c.W / 1000)}; }
+  function glCompute() {
+    if (!GL) return; const cfg = glCfg(), {c, g} = GL;
+    $('#glValL').textContent = cfg.mode === 'A' ? 'Angolo funi sull\'orizzontale (°)' : 'Lunghezza funi (m)'; $('#glEqRow').hidden = cfg.mode !== 'L';
+    GL.pts = GL.pts.filter(p => p.c < cfg.cranes);
+    $('#glCranes').innerHTML = [...Array(cfg.cranes)].map((_, k) => `<div class="row"><b style="min-width:52px">Gru ${k + 1}</b><span class="muted">${GL.pts.filter(p => p.c === k).length} punti</span><button class="sm" data-gadd="${k}">+ Dalla selezione</button><button class="sm" data-gpk="${k}">⌖ Clic nel modello</button></div>`).join('');
+    $('#glCranes').querySelectorAll('[data-gadd]').forEach(b => b.onclick = () => glAddSel(+b.dataset.gadd));
+    $('#glCranes').querySelectorAll('[data-gpk]').forEach(b => b.onclick = () => { pickMode = 'gl:' + b.dataset.gpk; try { api.viewer.activateTool('picking'); } catch (e) {} glMsg(`Clicca nel modello il punto di presa per la gru ${+b.dataset.gpk + 1}.`); });
+    const ok = GL.pts.length && [...Array(cfg.cranes)].every((_, k) => GL.pts.some(p => p.c === k)) && cfg.val > 0;
+    GL.res = null; GL.view = {points: GL.pts, hooks: []};
+    const f2 = v => nf(v, 2), f3 = v => nf(v, 3);
+    if (ok) { GL.res = PBDraw.genLift(GL.pts, cfg.W, c.cog, cfg); GL.view = {points: GL.pts, hooks: GL.res.hooks}; }
+    const r = GL.res, zc = c.cog[2];
+    $('#glSum').innerHTML = !r ? '<span class="warn">Servono almeno un punto per ogni gru e un valore per le funi.</span>' :
+      r.hooks.map(h => `<b>Gru ${h.c + 1}</b>: carico al gancio <b>${f2(h.V)} t</b> (${nf(h.share * 100, 0)}%) · gancio X ${f3(h.x)} Y ${f3(h.y)} Z ${f3(h.z)} · ${f2(h.z - zc)} m sopra il baricentro · tiro max ${f2(Math.max(...r.rows.filter(q => q.c === h.c).map(q => q.T)))} t`).join('<br>') +
+      (r.warn.length ? '<br>' + r.warn.map(w => `<span class="ko">${esc(w)}</span>`).join('<br>') : '<br><span class="ok">✓ equilibrio verificato</span>');
+    $('#glTab').innerHTML = '<tr><th>Fune</th><th>Gru</th><th>Origine</th><th>X</th><th>Y</th><th>Z</th><th>X gruppo</th><th>Y gruppo</th><th>Z gruppo</th><th class="k">Lungh. m</th><th class="k">Angolo</th><th class="k">Tiro t</th><th class="k">Verticale t</th><th></th></tr>' +
+      GL.pts.map((p, i) => { const q = r && r.rows[i], rl = rel(g, [p.x, p.y, p.z]);
+        return `<tr><td><b>F${i + 1}</b></td><td>${p.c + 1}</td><td class="muted">${esc(p.src || '')}</td><td>${f3(p.x)}</td><td>${f3(p.y)}</td><td>${f3(p.z)}</td><td>${f3(rl[0])}</td><td>${f3(rl[1])}</td><td>${f3(rl[2])}</td><td class="k">${q ? f2(q.L) : '–'}</td><td class="k">${q ? nf(q.alpha, 1) + '°' : '–'}</td><td class="k ${q && q.T < 0 ? 'ko' : ''}"><b>${q ? f2(q.T) : '–'}</b></td><td class="k">${q ? f2(q.V) : '–'}</td><td><button class="sm" data-gdel="${i}" title="Togli il punto">✕</button></td></tr>`; }).join('');
+    $('#glTab').querySelectorAll('[data-gdel]').forEach(b => b.onclick = () => { GL.pts.splice(+b.dataset.gdel, 1); glCompute(); });
+    drawIcons();
+  }
+  function glAddPoint(k, p, src) { if (!GL) return; GL.pts.push({c: k, x: p[0], y: p[1], z: p[2], src}); GL.pts.sort((a, b) => a.c - b.c); glMsg(`Punto aggiunto alla gru ${k + 1}.`); glCompute(); }
+  async function glAddSel(k) {
+    let sel = []; try { sel = ((await api.viewer.getSelection()) || []).filter(s => s.objectRuntimeIds && s.objectRuntimeIds.length); } catch (e) {}
+    if (!sel.length) { glMsg('<span class="warn">Seleziona nel modello gli elementi su cui si aggancia la fune (golfari, nodi, piastre), poi premi di nuovo.</span>'); return; }
+    let added = 0; const top = $('#glFrom').value === 't';
+    for (const s of sel) { let boxes = []; try { boxes = await api.viewer.getObjectBoundingBoxes(s.modelId, s.objectRuntimeIds); } catch (e) {}
+      let props = []; try { props = await api.viewer.getObjectProperties(s.modelId, s.objectRuntimeIds); } catch (e) {}
+      for (const b of boxes) { const bb = b.boundingBox; if (!bb) continue; const o = props.find(x => x.id === b.id), nm = o ? (markOf(o) || (o.product && o.product.name) || '') : '';
+        GL.pts.push({c: k, x: (bb.min.x + bb.max.x) / 2, y: (bb.min.y + bb.max.y) / 2, z: top ? bb.max.z : (bb.min.z + bb.max.z) / 2, src: nm || 'elemento'}); added++; } }
+    GL.pts.sort((a, b) => a.c - b.c); glMsg(`${added} punti aggiunti alla gru ${k + 1}.`); glCompute();
+  }
+  ['#glN', '#glMode', '#glVal', '#glEq', '#glW'].forEach(k => $(k).onchange = () => { if (k === '#glMode') $('#glVal').value = $('#glMode').value === 'A' ? '60,0' : '8,00'; glCompute(); });
+  $('#glClose').onclick = () => { $('#glBox').hidden = true; GL = null; drawIcons(); };
+  $('#glClear').onclick = () => { if (!GL) return; GL.pts = []; glCompute(); };
+  $('#glSave').onclick = async () => { if (!GL) return; const cfg = glCfg(), r = GL.res;
+    GL.c.glift = {t: Date.now(), cranes: cfg.cranes, mode: cfg.mode, val: cfg.val, eq: cfg.eq, W: cfg.W, points: GL.pts.map(p => ({...p})),
+      hooks: r ? r.hooks.map(h => ({c: h.c, x: h.x, y: h.y, z: h.z, V: h.V})) : [], rows: r ? r.rows.map(q => ({L: q.L, alpha: q.alpha, T: q.T})) : []};
+    save(); render(); await drawIcons(); glMsg(`<span class="ok">Presa salvata nel baricentro "${esc(GL.c.name)}".</span>`); };
+  function glRows(sep) { const r = GL.res, d = (v, k) => isFinite(v) ? v.toFixed(k).replace('.', ',') : '';
+    const L = [['Fune', 'Gru', 'Origine', 'X', 'Y', 'Z', 'X gruppo', 'Y gruppo', 'Z gruppo', 'Lunghezza (m)', 'Angolo (°)', 'Tiro (t)', 'Verticale (t)']];
+    GL.pts.forEach((p, i) => { const q = r && r.rows[i], rl = rel(GL.g, [p.x, p.y, p.z]); L.push(['F' + (i + 1), p.c + 1, p.src || '', d(p.x, 3), d(p.y, 3), d(p.z, 3), d(rl[0], 3), d(rl[1], 3), d(rl[2], 3), q ? d(q.L, 3) : '', q ? d(q.alpha, 1) : '', q ? d(q.T, 2) : '', q ? d(q.V, 2) : '']); });
+    if (r) r.hooks.forEach(h => L.push(['Gancio', h.c + 1, '', d(h.x, 3), d(h.y, 3), d(h.z, 3), '', '', '', '', '', '', d(h.V, 2)]));
+    return L.map(x => x.join(sep)).join(sep === ';' ? '\r\n' : '\n'); }
+  $('#glCopy').onclick = async () => { if (!GL) return; const txt = glRows('\t'); try { await navigator.clipboard.writeText(txt); } catch (e) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); } glMsg('Tabella copiata: incollala in Excel.'); };
+  $('#glCsv').onclick = () => { if (!GL) return; saveFileTo('#glFiles', safe(GL.c.name) + '_presa_gru.csv', new Blob(['\ufeff' + glRows(';')], {type: 'text/csv;charset=utf-8'})); };
+
+  // ================= dati di progetto e cartiglio =================
+  function fillPrj() {
+    const sh = store.sheet; PBDraw.setSheet(sh);
+    $('#prjClient').value = sh.client || 'METALSAN'; $('#prjCustom').hidden = sh.client !== 'ALTRO';
+    $('#prjCName').value = (sh.custom && sh.custom.name) || ''; $('#prjLogoPrev').src = (sh.custom && sh.custom.data) || ''; $('#prjLogoPrev').hidden = !(sh.custom && sh.custom.data);
+    document.querySelectorAll('[data-prj]').forEach(el => { if (document.activeElement !== el) el.value = (sh.info || {})[el.dataset.prj] || ''; });
+    const I = sh.info || {}; $('#prjSum').textContent = '· ' + [sh.client === 'ALTRO' ? (sh.custom && sh.custom.name) || 'altro' : sh.client === 'NESSUNO' ? 'senza logo cliente' : sh.client, I.commessa && 'commessa ' + I.commessa, I.rev && 'rev. ' + I.rev].filter(Boolean).join(' · ');
+  }
+  const prjSave = () => { store.sheetT = Date.now(); store.dirty = true; save(); fillPrj(); };
+  $('#prjClient').onchange = () => { store.sheet.client = $('#prjClient').value; prjSave(); };
+  $('#prjCName').onchange = () => { store.sheet.custom = {...(store.sheet.custom || {}), name: $('#prjCName').value.trim()}; prjSave(); };
+  document.querySelectorAll('[data-prj]').forEach(el => el.onchange = () => { store.sheet.info = {...(store.sheet.info || {}), [el.dataset.prj]: el.value.trim()}; prjSave(); });
+  $('#prjLogoBtn').onclick = () => $('#prjLogo').click();
+  $('#prjLogo').onchange = () => { const f = $('#prjLogo').files[0]; if (!f) return; const rd = new FileReader();
+    rd.onload = () => { const im = new Image(); im.onload = () => { // ridotto a max 600 px di larghezza, su fondo bianco
+        const k = Math.min(1, 600 / im.width), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+        const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+        store.sheet.custom = {name: $('#prjCName').value.trim() || f.name.replace(/\.[^.]+$/, ''), data: cv.toDataURL('image/png'), w: cv.width, h: cv.height}; store.sheet.client = 'ALTRO'; prjSave(); };
+      im.src = rd.result; }; rd.readAsDataURL(f); $('#prjLogo').value = ''; };
+  fillPrj();
 
   $('#expand').onchange = update; $('#rho').onchange = update;
 
