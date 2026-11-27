@@ -1650,12 +1650,13 @@
     const draw = d.meshes.filter(m => d.outline ? !isMinute(m) : (d.drawBolts || !m.bolt));
     const local = draw.map(m => { const q = new Float64Array(m.pos.length); for (let i = 0; i < q.length; i += 3) { const s = toL(m.pos[i] + d.ref[0], m.pos[i + 1] + d.ref[1], m.pos[i + 2] + d.ref[2]); q[i] = s[0]; q[i + 1] = s[1]; q[i + 2] = s[2]; } return {pos: q, idx: m.idx}; });
     const edges = d.outline ? null : local.map(m => featureEdges(m, 25)), EN = d.outline ? local.map(edgeNormals) : null;
-    const lugs = d.lugs.map(l => ({...l, L: toL(l.x, l.y, l.z)})), hook = toL(d.hook[0], d.hook[1], d.hook[2]);
+    const HK = (d.hooks || [d.hook]).map(h => toL(h[0], h[1], h[2])), hook = HK[0], multi = HK.length > 1; // più gru: un gancio per gru
+    const lugs = d.lugs.map(l => ({...l, L: toL(l.x, l.y, l.z), H: HK[l.hk || 0]}));
     const z0 = zeroLevel(local), zr = z => z - z0; // quote relative al ±0,00
     const VIEWS = {front: {f: [0, 1, 0], up: [0, 0, 1], title: 'PROSPETTO'}, plan: {f: [0, 0, -1], up: [0, 1, 0], title: 'PIANTA'}, side: {f: [1, 0, 0], up: [0, 0, 1], title: 'SEZIONE TRASVERSALE'}};
     const H = {}; for (const k in VIEWS) H[k] = d.outline ? (h => ({...h, segs: dropShort(h.segs, 0.4, 0.01)}))(hiddenLine(local, EN.map(en => contourEdges(en, norm(VIEWS[k].f))), VIEWS[k], 1600)) : hiddenLine(local, edges, VIEWS[k], 1400);
     // ingombri comprensivi di funi e gancio
-    const ext = k => { const h = H[k]; let u0 = h.umin, u1 = h.umax, v0 = h.vmin, v1 = h.vmax; [hook, ...lugs.map(l => l.L)].forEach(p => { const q = h.prj(p[0], p[1], p[2]); u0 = Math.min(u0, q[0]); u1 = Math.max(u1, q[0]); v0 = Math.min(v0, q[1]); v1 = Math.max(v1, q[1]); }); return {u0, u1, v0, v1}; };
+    const ext = k => { const h = H[k]; let u0 = h.umin, u1 = h.umax, v0 = h.vmin, v1 = h.vmax; [...HK, ...lugs.map(l => l.L)].forEach(p => { const q = h.prj(p[0], p[1], p[2]); u0 = Math.min(u0, q[0]); u1 = Math.max(u1, q[0]); v0 = Math.min(v0, q[1]); v1 = Math.max(v1, q[1]); }); return {u0, u1, v0, v1}; };
     const E = {front: ext('front'), plan: ext('plan'), side: ext('side')};
     const top = 287, bot = 50;
     const R = {front: [12, top - 125, 270, 125], plan: [12, bot, 270, top - 125 - bot], side: [284, top - 125, 124, 125], tab: [284, bot, 124, top - 125 - bot]};
@@ -1689,14 +1690,14 @@
       else { dashed([r[0] + 4, cp[1]], [r[0] + r[2] - 4, cp[1]], 'ASSI'); dashed([cp[0], r[1] + 4], [cp[0], r[1] + r[3] - 8], 'ASSI'); }
       // funi
       const grp = new Map(); // golfari che in questa vista cadono nello stesso punto: etichetta unica
-      lugs.forEach((l, i) => { const lp = pm([l.L[0], l.L[1], l.L[2] + 0.16]); Ln(lp, hp, 'FUNI', k === 'plan' ? 1.0 : 0.6);
-        let gk = [...grp.keys()].find(kk => Math.hypot(grp.get(kk).lp[0] - lp[0], grp.get(kk).lp[1] - lp[1]) < 4.5); if (gk == null) { gk = grp.size; grp.set(gk, {lp, ids: [], al: []}); } grp.get(gk).ids.push(i + 1); grp.get(gk).al.push(l.alpha); });
+      lugs.forEach((l, i) => { const lp = pm([l.L[0], l.L[1], l.L[2] + 0.16]), hq = pm(l.H); Ln(lp, hq, 'FUNI', k === 'plan' ? 1.0 : 0.6);
+        let gk = [...grp.keys()].find(kk => Math.hypot(grp.get(kk).lp[0] - lp[0], grp.get(kk).lp[1] - lp[1]) < 4.5); if (gk == null) { gk = grp.size; grp.set(gk, {lp, hp: hq, ids: [], al: []}); } grp.get(gk).ids.push(i + 1); grp.get(gk).al.push(l.alpha); });
       const nRowT = 1, nRowB = 1; // righe di quote sopra/sotto la pianta
       const placed = [];
-      grp.forEach(gq => { const lp = gq.lp, mid = [(lp[0] + hp[0]) / 2, (lp[1] + hp[1]) / 2], left = lp[0] < hp[0] - 0.5, lab = gq.ids.map(x => 'F' + x).join('/');
+      grp.forEach(gq => { const lp = gq.lp, hq = gq.hp, mid = [(lp[0] + hq[0]) / 2, (lp[1] + hq[1]) / 2], left = lp[0] < hq[0] - 0.5, lab = gq.ids.map(x => 'F' + x).join('/');
         if (k === 'plan') { // fuori dalla struttura: sopra i golfari in alto, sotto quelli in basso, su fondo bianco
           const ext = {top: map(0, h.vmax)[1], bot: map(0, h.vmin)[1]};
-          const up = lp[1] >= cp[1], q = [lp[0], up ? ext.top + 15 : ext.bot - 17], sz = 3.2;
+          const up = lp[1] >= cp[1], q = [lp[0], up ? ext.top + 15 + (multi ? 7 : 0) : ext.bot - 17 - (multi ? 7 : 0)], sz = 3.2;
           Ln(lp, [q[0], q[1] + (up ? -1.5 : 3.5)], 'FUNI', 0.15);
           P.push({t: 'tbox', p: q, txt: lab, s: sz * 1.3, layer: 'FUNI', align: 'center'}); T(q, lab, sz, 'FUNI', 'center'); P[P.length - 1].bold = true;
         } else { const q = [mid[0] + (left ? -2.5 : 2.5), mid[1] + 1.5]; while (placed.some(o => Math.abs(o[0] - q[0]) < 12 && Math.abs(o[1] - q[1]) < 5.5)) q[1] -= 6; placed.push(q.slice()); P.push({t: 'tbox', p: q, txt: lab, s: 3.0 * 1.3, layer: 'FUNI', align: left ? 'right' : 'left'}); T(q, lab, 3.0, 'FUNI', left ? 'right' : 'left'); P[P.length - 1].bold = true; }
@@ -1705,13 +1706,15 @@
       lugs.forEach(l => { const lp = pm(l.L); if (k === 'front') { const a = 0.275 * k2, hh = 0.3 * k2; Ln([lp[0] - a, lp[1]], [lp[0] + a, lp[1]], 'GOLFARI', 0.35); Ln([lp[0] - a, lp[1]], [lp[0] - a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] + a, lp[1]], [lp[0] + a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] - a * 0.4, lp[1] + hh], [lp[0] + a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); }
         else { C(lp, Math.max(0.8, 0.12 * k2), 'GOLFARI'); } });
       // gancio
-      C(hp, 1.6, 'FUNI'); Ln([hp[0], hp[1] + 1.6], [hp[0], hp[1] + 6], 'FUNI', 0.35);
-      if (k !== 'plan') T([hp[0] + 2.5, hp[1] + 4], `Gancio gru  ${lvl(zr(hook[2]))}`, 2.2, 'FUNI');
+      const hSeen = []; HK.forEach((H, j) => { const q = pm(H); C(q, 1.6, 'FUNI'); Ln([q[0], q[1] + 1.6], [q[0], q[1] + 6], 'FUNI', 0.35);
+        const dup = hSeen.some(o => Math.hypot(o[0] - q[0], o[1] - q[1]) < 3); hSeen.push(q); if (dup) return;
+        if (k !== 'plan') T([q[0] + 2.5, q[1] + 4], `Gancio ${multi ? (HK.slice(j + 1).some(H2 => Math.hypot(...pm(H2).map((v, i) => v - q[i])) < 3) ? 'gru ' + HK.map((_, i) => i + 1).slice(j).join('-') : 'gru ' + (j + 1)) : 'gru'}  ${lvl(zr(H[2]))}`, 2.2, 'FUNI');
+        else if (multi) { T([q[0] + 2.5, q[1] + 2.5], 'Gru ' + (j + 1), 2.4, 'FUNI'); P[P.length - 1].bold = true; } });
       if (k !== 'plan') { // livello ±0,00 e quote dei golfari
         const y0 = pm([0, 0, z0])[1], xr = Math.min(map(h.umax, 0)[0] + 3, r[0] + r[2] - 22), xl = map(h.umin, 0)[0] - 3;
         Ln([xl, y0], [xr + 10, y0], 'QUOTE', 0.25); Ln([xr + 4, y0], [xr + 2.5, y0 + 2.6], 'QUOTE', 0.25); Ln([xr + 4, y0], [xr + 5.5, y0 + 2.6], 'QUOTE', 0.25); Ln([xr + 2.5, y0 + 2.6], [xr + 5.5, y0 + 2.6], 'QUOTE', 0.25);
         T([xr + 6.5, y0 + 3], '±0,00', 2.4, 'QUOTE');
-        const seen = new Set(); lugs.forEach(l => { const lp = pm(l.L), key = Math.round(lp[0] / 6); if (seen.has(key)) return; seen.add(key); const out = lp[0] < hp[0] ? -1 : 1; T([lp[0] + out * 3.5, lp[1] + 3.5], lvl(zr(l.L[2])), 2.0, 'QUOTE', out < 0 ? 'right' : 'left'); });
+        const seen = new Set(); lugs.forEach(l => { const lp = pm(l.L), key = Math.round(lp[0] / 6); if (seen.has(key)) return; seen.add(key); const out = lp[0] < pm(l.H)[0] ? -1 : 1; T([lp[0] + out * 3.5, lp[1] + 3.5], lvl(zr(l.L[2])), 2.0, 'QUOTE', out < 0 ? 'right' : 'left'); });
       }
       cogSym(cp, 2.0); { const tx = `COG = ${nf(d.weight, 1)} t` + (k !== 'plan' ? `  ${lvl(zr(0))}` : ''), al = k === 'side' ? 'right' : 'left', tp = [cp[0] + (al === 'right' ? -3.5 : 3.5), cp[1] - 5.5];
         P.push({t: 'tbox', p: tp, txt: tx, s: 2.3 * 1.3, layer: 'BARICENTRO', align: al}); T(tp, tx, 2.3, 'BARICENTRO', al); }
@@ -1726,7 +1729,7 @@
         const ext = {top: map(0, h.vmax)[1], bot: map(0, h.vmin)[1], left: map(h.umin, 0)[0], right: map(h.umax, 0)[0]};
         const top = lugs.filter(l => l.L[1] >= 0), bot = lugs.filter(l => l.L[1] < 0);
         // X lungo l'asse: sopra per la trave superiore, sotto per l'inferiore
-        [[top, ext.top + 6, 1], [bot, ext.bot - 6, -1]].forEach(([ls, y, sg]) => ls.forEach(l => { const lp = pm(l.L); Ln(lp, [lp[0], y + sg * 1.5], 'QUOTE', 0.12); hdS(Math.min(lp[0], cp[0]), Math.max(lp[0], cp[0]), y, `X ${mm(l.L[0])}`); }));
+        [[top, ext.top + 6, 1], [bot, ext.bot - 6, -1]].forEach(([ls, y0, sg]) => { const srt = multi ? [...ls].sort((a, c) => Math.abs(a.L[0]) - Math.abs(c.L[0])) : ls; srt.forEach((l, ii) => { const y = multi ? y0 + sg * ii * 5 : y0, lp = pm(l.L); Ln(lp, [lp[0], y + sg * 1.5], 'QUOTE', 0.12); hdS(Math.min(lp[0], cp[0]), Math.max(lp[0], cp[0]), y, `X ${mm(l.L[0])}`); }); });
         Ln([cp[0], ext.top + 7.5], [cp[0], ext.bot - 7.5], 'QUOTE', 0.12);
         // Y trasversale: a sinistra per i golfari di sinistra, a destra per quelli di destra
         const lf = lugs.filter(l => l.L[0] < 0), rt = lugs.filter(l => l.L[0] >= 0);
@@ -1736,10 +1739,11 @@
       if (k === 'front') { // una riga per trave
         const byG = [...new Set(lugs.map(l => l.g || ''))];
         const y0q = Math.max(...lugs.map(l => pm(l.L)[1])) + 9;
-        byG.forEach((gn, i) => { const ls = lugs.filter(l => (l.g || '') === gn), y = y0q + i * 6;
-          ls.forEach(l => { const x = pm(l.L)[0]; hdS(Math.min(x, cp[0]), Math.max(x, cp[0]), y, mm(l.L[0])); });
+        let row = 0; byG.forEach((gn, i) => { const ls = lugs.filter(l => (l.g || '') === gn), y = y0q + (multi ? row : i) * 6;
+          if (multi) { const xs = [...new Set(ls.map(l => Math.round(l.L[0] * 100)))].sort((a, c) => Math.abs(a) - Math.abs(c)); xs.forEach((xv, ii) => { const l = ls.find(q => Math.round(q.L[0] * 100) === xv), x = pm(l.L)[0], yy = y + ii * 5; hdS(Math.min(x, cp[0]), Math.max(x, cp[0]), yy, mm(l.L[0])); }); row += xs.length * 5 / 6 + 0.3; }
+          else ls.forEach(l => { const x = pm(l.L)[0]; hdS(Math.min(x, cp[0]), Math.max(x, cp[0]), y, mm(l.L[0])); });
           T([Math.min(...ls.map(l => pm(l.L)[0]), cp[0]) - 2, y], ls.map(nm).join('-'), 2.1, 'QUOTE', 'right'); });
-        const lz = pm(lugs[0].L); vd(lz[1], hp[1], hp[0] - 10, mm(hook[2] - lugs[0].L[2]));
+        HK.forEach((H, j) => { const l0 = lugs.find(l => (l.hk || 0) === j); if (!l0) return; const lz = pm(l0.L), hq = pm(H); vd(lz[1], hq[1], hq[0] - 10, mm(H[2] - l0.L[2])); });
       }
       if (k === 'side') { // una riga per lato del baricentro (golfari a sinistra / a destra in pianta)
         const sides = [lugs.filter(l => l.L[0] < 0), lugs.filter(l => l.L[0] >= 0)].filter(a => a.length);
@@ -1751,20 +1755,21 @@
     place('front'); place('plan'); place('side');
     // tabella golfari e funi
     const t = R.tab, x0 = t[0] + 2; let y = t[1] + t[3] - 5;
-    T([x0, y], 'GOLFARI E FUNI', 2.8); y -= 6;
+    T([x0, y], multi ? 'PUNTI DI PRESA E FUNI' : 'GOLFARI E FUNI', 2.8); y -= 6;
     const cols = [0, 9, 19, 33, 46, 61, 76];
-    ['', 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', 'Grillo'].forEach((h, i) => { T([x0 + cols[i], y], h, 2.3); P[P.length - 1].bold = true; }); y -= 2.5; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.2); y -= 5;
-    lugs.forEach((l, i) => { const row = ['F' + (i + 1), l.g || '', nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
+    ['', multi ? 'Gru' : 'Trave', 'Carico t', 'Tiro t', 'Angolo', 'Fune m', multi ? '' : 'Grillo'].forEach((h, i) => { T([x0 + cols[i], y], h, 2.3); P[P.length - 1].bold = true; }); y -= 2.5; Ln([x0, y], [t[0] + t[2] - 2, y], 'CORNICE', 0.2); y -= 5;
+    lugs.forEach((l, i) => { const row = ['F' + (i + 1), multi ? String((l.hk || 0) + 1) : (l.g || ''), nf(l.P, 1), nf(l.T, 1), nf(l.alpha, 1) + '°', nf(l.Ls, 2)];
       row.forEach((v, j) => { T([x0 + cols[j], y], v, 2.7); if (j === 0 || j === 3) P[P.length - 1].bold = true; });
-      const gr = String(l.type || l.shackle || '–').replace(/^Grillo\s+/i, ''); T([x0 + cols[6], y], gr, 2.2); y -= 8.5; });
+      const gr = String(l.type || l.shackle || '–').replace(/^Grillo\s+/i, ''); if (!multi) T([x0 + cols[6], y], gr, 2.2); y -= 8.5; });
     y -= 1; T([x0, y], `Tiro max ${nf(Math.max(...lugs.map(l => l.T)), 1)} t${d.skl && d.skl !== 1 ? ' · SKL ' + nf(d.skl, 2) + ' nelle verifiche' : ''}`, 2.8); P[P.length - 1].bold = true; y -= 6.5;
-    T([x0, y], `Gancio sopra il baricentro, quota ${lvl(zr(hook[2]))} m`, 2.5); y -= 5.5;
+    if (multi) HK.forEach((H, j) => { const hl = (d.hookLoads || [])[j]; T([x0, y], `Gru ${j + 1}: gancio a quota ${lvl(zr(H[2]))} m${hl != null ? ` · carico ${nf(hl, 1)} t (${nf(hl / d.weight * 100, 0)}%)` : ''}`, 2.5); P[P.length - 1].bold = true; y -= 5.5; });
+    else T([x0, y], `Gancio sopra il baricentro, quota ${lvl(zr(hook[2]))} m`, 2.5), y -= 5.5;
     T([x0, y], `COG a quota ${lvl(zr(0))} m`, 2.5); y -= 5.5;
-    T([x0, y], `Golfari a ${[...new Set(lugs.map(l => lvl(zr(l.L[2]))))].join(' / ')} m`, 2.5); y -= 5.5;
+    T([x0, y], `${multi ? 'Punti di presa' : 'Golfari'} a ${[...new Set(lugs.map(l => lvl(zr(l.L[2]))))].join(' / ')} m`, 2.5); y -= 5.5;
     // cartiglio
     const ty = 8, th = 38; rect(12, ty, 396, th, 'CORNICE', 0.35); Ln([250, ty], [250, ty + th], 'CORNICE', 0.25);
-    T([14, ty + th - 6], `SCHEMA DI SOLLEVAMENTO CON GRU SINGOLA – ${d.name}`, 3.4); P[P.length - 1].bold = true;
-    T([14, ty + th - 13], `Peso ${nf(d.weight, 2)} t · ${lugs.length} golfari · scala 1:${S} su A3`, 2.5);
+    T([14, ty + th - 6], `SCHEMA DI SOLLEVAMENTO ${multi ? `CON ${HK.length} GRU (TANDEM)` : 'CON GRU SINGOLA'} – ${d.name}`, 3.4); P[P.length - 1].bold = true;
+    T([14, ty + th - 13], `Peso ${nf(d.weight, 2)} t · ${lugs.length} ${d.pointsLabel || 'golfari'} · scala 1:${S} su A3`, 2.5);
     T([14, ty + th - 19], `COG nel modello  X ${nf(c0[0], 3)}  Y ${nf(c0[1], 3)}  Z ${nf(c0[2], 3)} m`, 2.3);
     logos(P, ty);
 
