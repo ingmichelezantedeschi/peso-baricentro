@@ -1274,7 +1274,8 @@
     if (!pts.length) return {hooks: [], rows: [], warn: ['nessun punto di presa']};
     const hooks = cr.map(c => { const P = pts.filter(p => p.c === c), n = P.length, cx = P.reduce((a, p) => a + p.x, 0) / n, cy = P.reduce((a, p) => a + p.y, 0) / n;
       let H = [cx, cy, 0];
-      if (cfg.mode === 'A') { const t = Math.tan(Math.max(5, Math.min(89, val)) * Math.PI / 180); H[2] = Math.max(...P.map(p => p.z + Math.hypot(p.x - cx, p.y - cy) * t)); }
+      if (cfg.mode === 'H') H[2] = P.reduce((a, p) => a + p.z, 0) / n + val; // gancio in asse ai punti, all'altezza data sopra la loro quota media
+      else if (cfg.mode === 'A') { const t = Math.tan(Math.max(5, Math.min(89, val)) * Math.PI / 180); H[2] = Math.max(...P.map(p => p.z + Math.hypot(p.x - cx, p.y - cy) * t)); }
       else { const L = val, rmax = Math.max(...P.map(p => Math.hypot(p.x - cx, p.y - cy)));
         if (!(L > rmax + 0.05)) { warn.push(`Gru ${c + 1}: funi troppo corte, servono più di ${nf(rmax, 2)} m`); H[2] = Math.max(...P.map(p => p.z)) + 0.5; }
         else H[2] = Math.min(...P.map(p => p.z + Math.sqrt(L * L - (p.x - cx) ** 2 - (p.y - cy) ** 2)));

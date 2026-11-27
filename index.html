@@ -221,17 +221,17 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     <div class="g4">
       <label class="f">Gru<select id="glN"><option value="1">1 gru</option><option value="2">2 gru (tandem)</option></select></label>
       <label class="f">Peso di calcolo (t)<input type="text" inputmode="decimal" id="glW"></label>
-      <label class="f">Funi date da<select id="glMode"><option value="L">lunghezza (m)</option><option value="A">angolo sull'orizzontale (°)</option></select></label>
+      <label class="f">Gancio / funi<select id="glMode"><option value="H">altezza del gancio (m)</option><option value="L">lunghezza funi (m)</option><option value="A">angolo funi sull'orizzontale (°)</option></select></label>
       <label class="f"><span id="glValL">Lunghezza funi (m)</span><input type="text" inputmode="decimal" id="glVal" value="8,00"></label>
     </div>
-    <label class="row" id="glEqRow"><input type="checkbox" id="glEq"> funi tutte esattamente lunghe uguali: il gancio si sposta dalla verticale del centro dei punti</label>
+    <label class="row" id="glEqRow" hidden><input type="checkbox" id="glEq"> funi tutte esattamente lunghe uguali: il gancio si sposta dalla verticale del centro dei punti</label>
     <div class="row"><span class="note">Punto preso dall'elemento selezionato:</span><select id="glFrom" style="width:auto"><option value="c">centro del pezzo</option><option value="t">centro della faccia superiore</option></select></div>
     <div id="glCranes" style="display:flex;flex-direction:column;gap:4px"></div>
     <div id="glSum" class="note"></div>
     <div class="tw"><table class="lt" id="glTab"></table></div>
     <div class="row"><button class="sm pri" id="glSave">Salva nel baricentro</button><button class="sm" id="glCopy">Copia tabella</button><button class="sm" id="glCsv">CSV</button><button class="sm" id="glClear">Togli tutti i punti</button></div>
     <div id="glFiles" style="display:flex;flex-direction:column;gap:3px"></div>
-    <div class="note">Per ogni gru: "+ Dalla selezione" aggiunge un punto per ogni elemento selezionato nel modello, "⌖ Clic nel modello" aggiunge il punto cliccato. Il gancio sta sulla verticale del centro dei punti della sua gru; con la lunghezza nessuna fune supera il valore dato, con l'angolo nessuna fune scende sotto l'angolo dato. Tiri dall'equilibrio del corpo rigido con risultante verticale su ogni gancio. Valori indicativi da verificare.</div>
+    <div class="note">Per ogni gru: "+ Dalla selezione" aggiunge un punto per ogni elemento selezionato nel modello, "⌖ Clic nel modello" aggiunge il punto cliccato. Il gancio sta sempre sulla verticale del centro dei punti della sua gru. Con "altezza del gancio" sta all'altezza data sopra la quota media dei suoi punti; con la lunghezza nessuna fune supera il valore dato; con l'angolo nessuna fune scende sotto l'angolo dato. Lunghezze e angoli delle funi sono calcolati. Tiri dall'equilibrio del corpo rigido con risultante verticale su ogni gancio. Valori indicativi da verificare.</div>
   </div>
 </section>
 
@@ -275,7 +275,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=42"></script>
+<script src="draw.js?v=44"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -285,7 +285,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '42 (27/11/2026)';
+  const PB_VERSION = '44 (27/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null, GL = null;
@@ -491,12 +491,14 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     store.groups.forEach(g => g.cogs.forEach(c => icons.push({id: nid(c.id), iconPath: iconUrl(g), position: {x: c.cog[0], y: c.cog[1], z: c.cog[2]}, size: 30})));
     const lugUrl = new URL('lug.png?v=1', location.href).href;
     store.groups.forEach(g => g.cogs.forEach(c => {
+      if (GL && GL.c === c) return; // con la presa aperta non si mostrano i golfari: i punti li sceglie l'utente
       const pts = (LUG && LUG.c === c && LUG.preview) ? LUG.preview : (c.lugs && !lugStale(c) ? c.lugs.points : []);
       pts.forEach((p, k) => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: p.x, y: p.y, z: p.z + 0.15}, size: 26}));
     }));
     store.groups.forEach(g => g.cogs.forEach(c => { const gl = (GL && GL.c === c) ? GL.view : c.glift; if (!gl || !gl.points) return;
-      gl.points.forEach(p => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: p.x, y: p.y, z: p.z + 0.1}, size: 26}));
-      (gl.hooks || []).forEach(h => icons.push({id: nid(c.id), iconPath: lugUrl, position: {x: h.x, y: h.y, z: h.z}, size: 34})); }));
+      const glUrl = new URL('gl.png?v=1', location.href).href, hkUrl = new URL('glhook.png?v=1', location.href).href;
+      gl.points.forEach(p => icons.push({id: nid(c.id), iconPath: glUrl, position: {x: p.x, y: p.y, z: p.z + 0.1}, size: 24}));
+      (gl.hooks || []).forEach(h => icons.push({id: nid(c.id), iconPath: hkUrl, position: {x: h.x, y: h.y, z: h.z}, size: 34})); }));
     const supUrl = new URL('sup.png?v=1', location.href).href;
     store.groups.forEach(g => { const pts = (SUP && SUP.g === g && SUP.preview) ? SUP.preview : (g.sups && !supStale(g) ? g.sups.points : []);
       pts.forEach(p => { if (isFinite(p.Z)) icons.push({id: nid(-1), iconPath: supUrl, position: {x: p.X, y: p.Y, z: p.Z - 0.12}, size: 24}); }); });
@@ -1405,17 +1407,18 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const glMsg = (t, busy) => { $('#glState').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   function openGl(c, g) {
     if (!c) return; const sv = c.glift || {};
+    if (LUG) { $('#lugBox').hidden = true; LUG = null; } // nessun golfare proposto: si parte solo dai punti scelti
     GL = {c, g, pts: (sv.points || []).map(p => ({...p}))};
     $('#glBox').hidden = false; $('#glName').textContent = c.name; $('#glBox').scrollIntoView({block: 'start', behavior: 'smooth'});
-    $('#glN').value = String(sv.cranes || 2); $('#glMode').value = sv.mode || 'L'; $('#glVal').value = dec(sv.val || (sv.mode === 'A' ? 60 : 8), sv.mode === 'A' ? 1 : 2);
+    $('#glN').value = String(sv.cranes || 2); $('#glMode').value = sv.mode || 'H'; $('#glVal').value = dec(sv.val || (sv.mode === 'A' ? 60 : sv.mode === 'L' ? 8 : 6), sv.mode === 'A' ? 1 : 2);
     $('#glEq').checked = !!sv.eq; $('#glW').value = dec(c.Wcalc || c.W / 1000, 2);
-    glMsg(`Baricentro "${esc(c.name)}": ${nf(c.Wcalc || c.W / 1000, 2)} t. Scegli i punti di presa di ogni gru.`);
+    glMsg(`Baricentro "${esc(c.name)}": ${nf(c.Wcalc || c.W / 1000, 2)} t. ` + (GL.pts.length ? `Punti salvati: ${GL.pts.length}.` : 'Nessun punto di presa: scegli tu dove prendere il carico, gru per gru.'));
     glCompute();
   }
-  function glCfg() { return {cranes: +$('#glN').value, mode: $('#glMode').value, val: numv('#glVal'), eq: $('#glMode').value === 'L' && $('#glEq').checked, W: numv('#glW') > 0 ? numv('#glW') : (GL.c.Wcalc || GL.c.W / 1000)}; }
+  function glCfg() { return {cranes: +$('#glN').value, mode: $('#glMode').value, val: numv('#glVal'), eq: false, W: numv('#glW') > 0 ? numv('#glW') : (GL.c.Wcalc || GL.c.W / 1000)}; }
   function glCompute() {
     if (!GL) return; const cfg = glCfg(), {c, g} = GL;
-    $('#glValL').textContent = cfg.mode === 'A' ? 'Angolo funi sull\'orizzontale (°)' : 'Lunghezza funi (m)'; $('#glEqRow').hidden = cfg.mode !== 'L';
+    $('#glValL').textContent = cfg.mode === 'A' ? 'Angolo funi sull\'orizzontale (°)' : cfg.mode === 'H' ? 'Gancio sopra i punti di presa (m)' : 'Lunghezza funi (m)'; $('#glEqRow').hidden = true;
     GL.pts = GL.pts.filter(p => p.c < cfg.cranes);
     $('#glCranes').innerHTML = [...Array(cfg.cranes)].map((_, k) => `<div class="row"><b style="min-width:52px">Gru ${k + 1}</b><span class="muted">${GL.pts.filter(p => p.c === k).length} punti</span><button class="sm" data-gadd="${k}">+ Dalla selezione</button><button class="sm" data-gpk="${k}">⌖ Clic nel modello</button></div>`).join('');
     $('#glCranes').querySelectorAll('[data-gadd]').forEach(b => b.onclick = () => glAddSel(+b.dataset.gadd));
@@ -1445,7 +1448,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
         GL.pts.push({c: k, x: (bb.min.x + bb.max.x) / 2, y: (bb.min.y + bb.max.y) / 2, z: top ? bb.max.z : (bb.min.z + bb.max.z) / 2, src: nm || 'elemento'}); added++; } }
     GL.pts.sort((a, b) => a.c - b.c); glMsg(`${added} punti aggiunti alla gru ${k + 1}.`); glCompute();
   }
-  ['#glN', '#glMode', '#glVal', '#glEq', '#glW'].forEach(k => $(k).onchange = () => { if (k === '#glMode') $('#glVal').value = $('#glMode').value === 'A' ? '60,0' : '8,00'; glCompute(); });
+  ['#glN', '#glMode', '#glVal', '#glEq', '#glW'].forEach(k => $(k).onchange = () => { if (k === '#glMode') $('#glVal').value = $('#glMode').value === 'A' ? '60,0' : $('#glMode').value === 'H' ? '6,00' : '8,00'; glCompute(); });
   $('#glClose').onclick = () => { $('#glBox').hidden = true; GL = null; drawIcons(); };
   $('#glClear').onclick = () => { if (!GL) return; GL.pts = []; glCompute(); };
   $('#glSave').onclick = async () => { if (!GL) return; const cfg = glCfg(), r = GL.res;
