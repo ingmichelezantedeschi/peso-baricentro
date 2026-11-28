@@ -1101,7 +1101,8 @@
     const vMid = (() => { let a = Infinity, b = -Infinity; local.forEach(m => { for (let i = 1; i < m.pos.length; i += 3) { if (m.pos[i] < a) a = m.pos[i]; if (m.pos[i] > b) b = m.pos[i]; } }); return isFinite(a) ? (a + b) / 2 : 0; })();
     const girders = []; { const by = new Map(); lugs.forEach(l => { const k = l.g || ('v' + Math.round(l.gv * 2)); if (!by.has(k)) by.set(k, []); by.get(k).push(l); }); by.forEach(ls => girders.push(ls)); }
     girders.forEach(ls => { const l0 = ls[0], so = Math.abs(l0.gv - vMid) < 0.3 ? 1 : Math.sign(l0.gv - vMid);
-      const ends = flangeEnds(local, l0.L[0], l0.gv, l0.gw / 2, so); ls.cm = ends[0]; ls.cp = ends[1]; ls.so = so; });
+      const ends = flangeEnds(local, l0.L[0], l0.gv, l0.gw / 2, so, d.lm, l0.gi); if (!ends) { ls.skip = true; return; } ls.cm = ends[0]; ls.cp = ends[1]; ls.so = so;
+      ls.dubbio = !/^marca /.test(d.refLabel || '') && (ends[1].u - ends[0].u) < 0.6 * (U1 - U0); }); // trave molto più corta del concio: spigoli da controllare
     const SP = pick(Math.max((HP.umax - HP.umin) / (RP[2] - 24), (HP.vmax - HP.vmin) / (RP[3] - 72)) * 1000), k2 = 1000 / SP;
     const cu = (HP.umin + HP.umax) / 2, cv = (HP.vmin + HP.vmax) / 2, ox = RP[0] + RP[2] / 2, oy = RP[1] + RP[3] / 2 - 6;
     const map = (u, v) => [ox + (u - cu) * k2, oy + (v - cv) * k2], pm = p => { const q = HP.prj(p[0], p[1], p[2]); return map(q[0], q[1]); };
@@ -1126,7 +1127,7 @@
       Ln(add(A2, u, -1.5), add(B2, u, 1.5), 'QUOTE', 0.18); tick(A2); tick(B2); txtRot([(A2[0] + B2[0]) / 2, (A2[1] + B2[1]) / 2], txt, u); return [A2, B2]; };
     const ext = {up: -Infinity, dn: Infinity}, labels = [];
     const mmLoc = (a, b) => String(Math.round(Math.hypot(a[0] - b[0], a[1] - b[1]) * 1000));
-    girders.forEach(ls => {
+    girders.forEach(ls => { if (ls.skip) return;
       const cm = ls.cm, cp = ls.cp, A = pm([cm.u, cm.v, 0]), B = pm([cp.u, cp.v, 0]), u = unit(A, B), C0 = map(cu, cv);
       let n = [-u[1], u[0]]; if (dot(n, sub(A, C0)) < 0) n = [u[1], -u[0]];
       const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
@@ -1152,6 +1153,7 @@
       const side = n[1] >= 0 ? 'up' : 'dn'; far.forEach(q => { ext[side] = side === 'up' ? Math.max(ext[side], q[1]) : Math.min(ext[side], q[1]); });
       sorted.forEach(l => labels.push({l, side, left: pm(l.L)[0] < C0[0]}));
     });
+    { const dub = girders.filter(ls => ls.skip || ls.dubbio); if (dub.length) T([RP[0] + 3, RP[1] + 4], `ATTENZIONE: spigoli della piattabanda non trovati con certezza per ${dub.map(ls => ls.map(l => 'G' + l.n).join('-')).join(', ')}: controllare le quote.`, 2.2, 'BARICENTRO'); }
     // lunghezza totale sotto la pianta
     let pa = null, pb = null; local.forEach(m => { for (let i = 0; i < m.pos.length; i += 3) { const u = m.pos[i]; if (!pa || u < pa[0]) pa = [m.pos[i], m.pos[i + 1], m.pos[i + 2]]; if (!pb || u > pb[0]) pb = [m.pos[i], m.pos[i + 1], m.pos[i + 2]]; } });
     const yBot = Math.min(isFinite(ext.dn) ? ext.dn : Infinity, map(0, HP.vmin)[1] - 4) - 3, qa = pm(pa), qb = pm(pb);
@@ -1607,24 +1609,40 @@
    * Si parte dalla sezione al golfare (u0, centro v0, semilarghezza hw) e si segue la piattabanda con tagli trasversali;
    * so = lato esterno (+1 / −1 in v). Restituisce [{u, v, z} all'estremità con u minore, {…} con u maggiore].
    */
-  function flangeEnds(meshes, u0, v0, hw, so) {
-    const ms = meshes.map(m => { let a = Infinity, b = -Infinity; for (let i = 0; i < m.pos.length; i += 3) { if (m.pos[i] < a) a = m.pos[i]; if (m.pos[i] > b) b = m.pos[i]; } return {m, a, b}; });
+  function flangeEnds(meshes, u0, v0, hw, so, lm, gi) {
+    const ms = meshes.map(m => { let a = Infinity, b = -Infinity, c = Infinity, e = -Infinity; for (let i = 0; i < m.pos.length; i += 3) { if (m.pos[i] < a) a = m.pos[i]; if (m.pos[i] > b) b = m.pos[i]; if (m.pos[i + 1] < c) c = m.pos[i + 1]; if (m.pos[i + 1] > e) e = m.pos[i + 1]; } return {m, a, b, wv: e - c}; });
     const U0 = Math.min(...ms.map(x => x.a)), U1 = Math.max(...ms.map(x => x.b));
-    const cut = (u, vc, h) => { const pts = []; ms.forEach(x => { if (u <= x.a || u >= x.b) return; cutLines(x.m, 0, u).forEach(sg => sg.forEach(q => { if (Math.abs(q[1] - vc) < h + 0.15) pts.push(q); })); });
-      if (!pts.length) return null; let zt = -Infinity; pts.forEach(q => { if (q[2] > zt) zt = q[2]; });
-      let lo = Infinity, hi = -Infinity; pts.forEach(q => { if (q[2] > zt - 0.1) { if (q[1] < lo) lo = q[1]; if (q[1] > hi) hi = q[1]; } });
-      return {lo, hi, z: zt}; };
-    const outer = f => so > 0 ? f.hi : f.lo;
+    // bordo esterno di un piatto al taglio u: si guarda un elemento alla volta (pezzi accostati, fazzoletti,
+    // coprigiunti, mensole e pioli non si mescolano) e si prende il piatto il cui bordo esterno è più vicino a e
+    const edgeAt = (u, e) => { if (u <= U0 || u >= U1) return null; let best = null;
+      ms.forEach(x => { if (u <= x.a || u >= x.b || x.wv < 0.1 || x.wv > 2.5) return; const pts = []; cutLines(x.m, 0, u).forEach(sg => sg.forEach(q => pts.push(q))); if (!pts.length) return;
+        let zt = -Infinity; pts.forEach(q => { if (q[2] > zt) zt = q[2]; }); let lo = Infinity, hi = -Infinity;
+        pts.forEach(q => { if (q[2] > zt - 0.1) { if (q[1] < lo) lo = q[1]; if (q[1] > hi) hi = q[1]; } });
+        const w = hi - lo; if (!(w <= 1.8)) return; /* anche tratti stretti: all'estremità obliqua il taglio prende solo una punta del piatto */ const v = so > 0 ? hi : lo, dd = Math.abs(v - e);
+        if (dd < 0.12 && (!best || dd < best.dd)) best = {v, z: zt, dd}; });
+      return best; };
+    const refine = (uIn, uOut, e) => { let good = null; for (let i = 0; i < 24; i++) { const m = (uIn + uOut) / 2, f = edgeAt(m, e); if (f) { uIn = m; good = {u: m, f}; } else uOut = m; } return good; };
     const run = dir => {
-      let vc = v0, h = hw, u = u0 + 0.00731 * dir; const f0 = cut(u, vc, h); // piccolo scarto: i tagli non cadono sui giunti fra le lamiere if (!f0) return {u: u0, v: v0 + so * hw, z: 0};
-      let good = {u, f: f0}; const step = 0.2, ok = f => f && so * (outer(f) - vc) > h - 0.05;
-      for (let it = 0; it < 2000; it++) { let un = u + dir * step; const out = un < U0 || un > U1; if (out) un = dir < 0 ? U0 - 1e-6 : U1 + 1e-6; // oltre la fine: si cerca il bordo per bisezione
-        const f = out ? null : cut(un, vc, h);
-        if (!ok(f)) { let a = u, b = un; for (let i = 0; i < 22; i++) { const m = (a + b) / 2, fm = cut(m, vc, h); if (ok(fm)) { a = m; good = {u: m, f: fm}; } else b = m; } break; }
-        u = un; good = {u, f}; if (f.hi - f.lo > 1.6 * hw) { vc = (f.lo + f.hi) / 2; h = Math.min(hw * 1.3, (f.hi - f.lo) / 2); } }
-      return {u: good.u, v: outer(good.f), z: good.f.z};
+      const lim = dir < 0 ? U0 : U1, inside = u => dir < 0 ? u > lim : u < lim;
+      let u = u0 + 0.00731 * dir, e = v0 + so * hw, f = edgeAt(u, e); if (!f) return null;
+      e = f.v; let good = {u, f};
+      if (lm && gi != null) { // la linea della trave la dà il modello dei golfari (passo 0,5 m); lo spigolo si trova sui pezzi vicino alla fine
+        let uu = u, miss = 0;
+        for (let it = 0; it < 400; it++) { const un = uu + dir * 0.5; if (!inside(un)) break; const g = lm.girderAt(gi, un);
+          if (g.missing) { if (++miss >= 2) break; uu = un; continue; } miss = 0; uu = un;
+          const eg = g.v + so * g.w / 2, fe = edgeAt(un, Math.abs(eg - e) < 0.2 ? eg : e); if (fe && Math.abs(fe.v - e) < 0.2) { e = fe.v; good = {u: un, f: fe}; } }
+        u = good.u;
+      }
+      // si prosegue a passi brevi fino a dove il bordo esterno finisce (le fessure dei giunti fino a 12 cm si saltano)
+      const step = 0.1;
+      for (let it = 0; it < 6000; it++) { let un = u + dir * step, fn = inside(un) ? edgeAt(un, e) : null;
+        if (!fn) for (const k of [0.04, 0.08, 0.12]) { const u2 = un + dir * k; const f2 = inside(u2) ? edgeAt(u2, e) : null; if (f2) { un = u2; fn = f2; break; } }
+        if (!fn) { const r = refine(u, inside(un) ? un : lim - dir * 1e-6, e); if (r) good = r; break; }
+        u = un; e = fn.v; good = {u, f: fn}; }
+      return {u: good.u, v: good.f.v, z: good.f.z};
     };
-    return [run(-1), run(1)];
+    const a = run(-1), b = run(1);
+    return a && b ? [a, b] : null;
   }
   function cutLines(m, a, v) {
     const out = [];

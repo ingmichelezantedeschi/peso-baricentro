@@ -67,6 +67,11 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+RICERCA DEGLI SPIGOLI (versione 54)
+- Gli spigoli della piattabanda si cercano un pezzo alla volta, seguendo la linea della trave del
+  calcolo dei golfari: piatti accostati, mensole, coprigiunti e fessure dei giunti non la fermano.
+- Se la trave trovata è molto più corta del concio, la tavola lo segnala in rosso.
+
 TAVOLA DI POSIZIONAMENTO E CARTIGLI (versione 53)
 - Pianta: niente più RIF. 0. Ogni golfare è riferito allo spigolo esterno della piattabanda
   superiore dal suo lato (cerchietto sullo spigolo). Quote per trave:
