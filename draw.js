@@ -1686,6 +1686,18 @@
    * d = {meshes (rel. ref), ref, cog (ass.), ax:[ax,ay], lugs:[{x,y,z,label,T,P,alpha,Ls,g,type,shackle}], hook:[x,y,z],
    *      name, weight, project, model, group, drawBolts, fd}
    */
+  /** golfare in prospetto: piastra con i lati tangenti al tondo, foro; la piastra è lungo l'asse (ruotata di phi se orientata verso il gancio) */
+  function lugFront(l, G, pm, Ln, C, k2) {
+    const Lh = +G.L / 2000, ev = +G.ev / 1000, R = +G.R / 1000, r0 = (+G.d0 || 0) / 2000, cs = Math.abs(Math.cos(l.phi || 0)) || 1;
+    const P = (u, z) => pm([l.L[0] + u * cs, l.L[1], l.L[2] + z]);
+    const tan = s => { const dx = s * Lh, dy = -ev, D = Math.hypot(dx, dy); if (D <= R) return [s * Lh, ev - Math.sqrt(Math.max(0, R * R - Lh * Lh))];
+      const ph = Math.atan2(dy, dx), be = Math.acos(R / D), c = [ph + be, ph - be].map(a => [R * Math.cos(a), ev + R * Math.sin(a)]); return s * c[0][0] > s * c[1][0] ? c[0] : c[1]; };
+    const tr = tan(1), tl = tan(-1);
+    Ln(P(-Lh, 0), P(Lh, 0), 'GOLFARI', 0.35); Ln(P(Lh, 0), P(tr[0], tr[1]), 'GOLFARI', 0.35); Ln(P(-Lh, 0), P(tl[0], tl[1]), 'GOLFARI', 0.35);
+    let a0 = Math.atan2(tr[1] - ev, tr[0]), a1 = Math.atan2(tl[1] - ev, tl[0]); if (a1 < a0) a1 += 2 * Math.PI;
+    const N = 24; let q = P(tr[0], tr[1]); for (let i = 1; i <= N; i++) { const a = a0 + (a1 - a0) * i / N, q2 = P(R * Math.cos(a), ev + R * Math.sin(a)); Ln(q, q2, 'GOLFARI', 0.35); q = q2; }
+    if (r0 > 0) C(P(0, ev), Math.max(0.3, r0 * k2), 'GOLFARI');
+  }
   function buildLugSheet(d) {
     if (d.outline) return buildOutlineSheet(d);
     const ax = d.ax, pv = [-ax[1], ax[0]], c0 = d.cog;
@@ -1733,7 +1745,7 @@
       else { dashed([r[0] + 4, cp[1]], [r[0] + r[2] - 4, cp[1]], 'ASSI'); dashed([cp[0], r[1] + 4], [cp[0], r[1] + r[3] - 8], 'ASSI'); }
       // funi
       const grp = new Map(); // golfari che in questa vista cadono nello stesso punto: etichetta unica
-      lugs.forEach((l, i) => { const lp = pm([l.L[0], l.L[1], l.L[2] + 0.16]), hq = pm(l.H); Ln(lp, hq, 'FUNI', k === 'plan' ? 1.0 : 0.6);
+      lugs.forEach((l, i) => { const lp = pm([l.L[0], l.L[1], l.L[2] + (l.ev != null ? l.ev : 0.16)]), hq = pm(l.H); Ln(lp, hq, 'FUNI', k === 'plan' ? 1.0 : 0.6);
         let gk = [...grp.keys()].find(kk => Math.hypot(grp.get(kk).lp[0] - lp[0], grp.get(kk).lp[1] - lp[1]) < 4.5); if (gk == null) { gk = grp.size; grp.set(gk, {lp, hp: hq, ids: [], al: []}); } grp.get(gk).ids.push(i + 1); grp.get(gk).al.push(l.alpha); });
       const nRowT = 1, nRowB = 1; // righe di quote sopra/sotto la pianta
       const placed = [];
@@ -1746,7 +1758,7 @@
         } else { const q = [mid[0] + (left ? -2.5 : 2.5), mid[1] + 1.5]; while (placed.some(o => Math.abs(o[0] - q[0]) < 12 && Math.abs(o[1] - q[1]) < 5.5)) q[1] -= 6; placed.push(q.slice()); P.push({t: 'tbox', p: q, txt: lab, s: 3.0 * 1.3, layer: 'FUNI', align: left ? 'right' : 'left'}); T(q, lab, 3.0, 'FUNI', left ? 'right' : 'left'); P[P.length - 1].bold = true; }
         if (k === 'front') T([lp[0] + (left ? -2 : 2), lp[1] - 6], gq.al.map(a => nf(a, 1) + '°').join(' / '), 2.1, 'QUOTE', left ? 'right' : 'left'); });
       // golfari
-      lugs.forEach(l => { const lp = pm(l.L); if (k === 'front') { const a = 0.275 * k2, hh = 0.3 * k2; Ln([lp[0] - a, lp[1]], [lp[0] + a, lp[1]], 'GOLFARI', 0.35); Ln([lp[0] - a, lp[1]], [lp[0] - a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] + a, lp[1]], [lp[0] + a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] - a * 0.4, lp[1] + hh], [lp[0] + a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); }
+      lugs.forEach(l => { const lp = pm(l.L); const G = d.lugGeo; if (k === 'front' && G && +G.L > 0 && +G.R > 0 && +G.ev > 0) { lugFront(l, G, pm, Ln, C, k2); return; } if (k === 'front') { const a = 0.275 * k2, hh = 0.3 * k2; Ln([lp[0] - a, lp[1]], [lp[0] + a, lp[1]], 'GOLFARI', 0.35); Ln([lp[0] - a, lp[1]], [lp[0] - a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] + a, lp[1]], [lp[0] + a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); Ln([lp[0] - a * 0.4, lp[1] + hh], [lp[0] + a * 0.4, lp[1] + hh], 'GOLFARI', 0.35); }
         else { C(lp, Math.max(0.8, 0.12 * k2), 'GOLFARI'); } });
       // gancio
       const hSeen = []; HK.forEach((H, j) => { const q = pm(H); C(q, 1.6, 'FUNI'); Ln([q[0], q[1] + 1.6], [q[0], q[1] + 6], 'FUNI', 0.35);
@@ -1859,7 +1871,7 @@
     const items = [];
     const ax = [d.ax[0], d.ax[1], 0], pv = [-d.ax[1], d.ax[0], 0];
     d.lugs.forEach((l, i) => {
-      const L = d.lugL || 0.55, Hh = 0.3, th = 0.035, hole = [l.x, l.y, l.z + 0.16];
+      const L = d.lugL || 0.55, Hh = 0.3, th = 0.035, hole = [l.x, l.y, l.z + (l.ev != null ? l.ev : 0.16)];
       const P = (u, z) => [l.x + ax[0] * u - pv[0] * th / 2, l.y + ax[1] * u - pv[1] * th / 2, l.z + z];
       const [V, F] = prism([P(-L / 2, 0), P(L / 2, 0), P(L * 0.2, Hh), P(-L * 0.2, Hh)], [pv[0] * th, pv[1] * th, 0]);
       items.push(proxy(`Golfare F${i + 1}`, l.type || 'Golfare', V, F, '#e2a900', [['Tiro_t', l.T], ['Carico_t', l.P], ['Tipo', l.type || ''], ['Grillo', l.shackle || ''], ['Trave', l.g || '']]));
@@ -1929,7 +1941,7 @@
         const la = l.dir ? [l.dir[0], l.dir[1], 0] : ax, lp = l.dir ? [-l.dir[1], l.dir[0], 0] : pv;
         const [V, F] = geo.lug(l, la, lp, su.lugL || 0.55);
         items.push(proxy(`${su.name} - Golfare F${i + 1}`, 'PB_GOLFARE', V, F, '#e2a900', [['Sollevamento', su.name], ['Tiro_t', l.T], ['Carico_t', l.P], ['Tipo', l.type || ''], ['Grillo', l.shackle || ''], ['Trave', l.g || '']]));
-        const [V2, F2] = geo.tube([l.x, l.y, l.z + 0.16], su.hook, 0.03);
+        const [V2, F2] = geo.tube([l.x, l.y, l.z + (l.ev != null ? l.ev : 0.16)], su.hook, 0.03);
         items.push(proxy(`${su.name} - Fune F${i + 1}`, 'PB_FUNE', V2, F2, '#1f5fbf', [['Sollevamento', su.name], ['Tiro_t', l.T], ['Lunghezza_m', l.Ls], ['Angolo_deg', l.alpha]]));
       });
       const [Vh, Fh] = geo.box([su.hook[0], su.hook[1], su.hook[2] + 0.4], 0.6, 0.4, 0.8);

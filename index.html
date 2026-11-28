@@ -169,7 +169,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
         <label class="f" hidden>Golfari (una riga per tipo: nome ; portata in t)<textarea id="catLug" rows="3" style="font:12px var(--m)"></textarea></label>
         <label class="f">Serie dei grilli (il grillo della serie lo sceglie il programma in base al tiro)<select id="catSeries"><option value="G-209">Crosby G-209 (perno a vite)</option><option value="G-4163">Green Pin G-4163 (con dado e copiglia)</option></select></label>
         <label class="f">Grilli della serie scelta (nome ; portata WLL in t ; diametro perno B in mm ; apertura A in mm ; lunghezza interna C ; diametro arco D ; larghezza interna arco E)<textarea id="catSh" rows="8" style="font:12px var(--m)"></textarea></label>
-        <div class="note">Per ogni golfare viene proposto il tipo più piccolo con portata ≥ tiro × coefficiente. Il catalogo è condiviso con il progetto: sostituisci i valori di esempio con i vostri.</div>
+        <div class="note">Per tutti i golfari del sollevamento viene proposto lo stesso grillo: il tipo più piccolo con portata ≥ tiro massimo × coefficiente. Il catalogo è condiviso con il progetto: sostituisci i valori di esempio con i vostri.</div>
       </div>
     </details>
     <div id="lugSum" class="note"></div>
@@ -307,7 +307,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=50"></script>
+<script src="draw.js?v=52"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -317,7 +317,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '50 (27/11/2026)';
+  const PB_VERSION = '52 (28/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null, GL = null;
@@ -967,6 +967,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     LUG.custom ||= {};
     let pts = r.points.map((p, k) => lm.pointAt(p.gi, LUG.custom[k] != null ? LUG.custom[k] : p.u, lugL, lugWd));
     let ropeFail = [];
+    const evH = (+((store.lugGeo || {}).ev) > 0 ? +store.lugGeo.ev : 76) / 1000; // centro del foro sopra la piattabanda (m): la fune parte da lì
     if (rope) { // un golfare resta dov'è, gli altri scorrono sulla loro trave finché le funi hanno la stessa lunghezza
       const an = Math.min(Math.max(0, +$('#lugAnchor').value || 0), pts.length - 1);
       [...$('#lugAnchor').options].forEach((o, i) => { o.hidden = i >= pts.length; });
@@ -974,10 +975,10 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       if (!(numv('#lugH') > 0)) $('#lugH').value = dec(Math.round(Math.max(...pts.map(p => p.d)) * Math.tan(Math.PI / 3) * 10) / 10, 1);
       const Hh = numv('#lugH');
       for (let it = 0; it < 4; it++) {
-        const hz = Math.max(...pts.map(p => p.z)) + Hh, L0 = Math.hypot(pts[an].d, hz - pts[an].z); ropeFail = [];
+        const hz = Math.max(...pts.map(p => p.z)) + Hh, L0 = Math.hypot(pts[an].d, hz - pts[an].z - evH); ropeFail = [];
         pts = pts.map((p, k) => {
           if (k === an) return p;
-          const sg = Math.sign(p.u) || 1, f = w => { const q = lm.pointAt(p.gi, sg * w, lugL, lugWd); return Math.hypot(q.d, hz - q.z) - L0; };
+          const sg = Math.sign(p.u) || 1, f = w => { const q = lm.pointAt(p.gi, sg * w, lugL, lugWd); return Math.hypot(q.d, hz - q.z - evH) - L0; };
           let lo = 0.3, hi = sg > 0 ? lm.umax - 0.3 : -lm.umin - 0.3;
           if (f(lo) > 0) { ropeFail.push(k); return lm.pointAt(p.gi, sg * lo, lugL, lugWd); }
           if (f(hi) < 0) { ropeFail.push(k); return lm.pointAt(p.gi, sg * hi, lugL, lugWd); }
@@ -993,19 +994,21 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     let H = numv('#lugH'); if (!(H > 0)) { H = Math.round(dRad * Math.tan(Math.PI / 3) * 10) / 10; $('#lugH').value = dec(H, 1); }
     const zTop = Math.max(...pts.map(p => p.z)), hookZ = zTop + H;
     const W = numv('#lugW') || c.W / 1000;
-    const f = PBDraw.slingForces(pts, W, hookZ);
+    const f = PBDraw.slingForces(pts.map(p => ({...p, z: p.z + evH})), W, hookZ); // funi dal centro del foro del golfare al gancio
     const fd = numv('#lugFd') || 1, skl = n === 4 ? (numv('#lugSkl') || 1) : 1;
     const cat = txt => String(txt || '').split('\n').map(l => l.split(';')).filter(a => a.length >= 2).map(a => { const cap = parseFloat(a[1].replace(',', '.')), pin = a[2] ? parseFloat(a[2].replace(',', '.')) : NaN; const num = i => a[i] ? parseFloat(a[i].replace(',', '.')) : NaN, jaw = num(3), C = num(4), Dd = num(5), E = num(6); return {name: a[0].trim(), cap, pin: pin > 0 ? pin : pinOf(cap), jaw: jaw > 0 ? jaw : null, C: C > 0 ? C : null, D: Dd > 0 ? Dd : null, E: E > 0 ? E : null}; }).filter(x => x.name && x.cap > 0).sort((a, b) => a.cap - b.cap);
     const cLug = cat(store.catalog.lugs), cSh = cat(store.catalog.shackles);
     const pick = (list, T) => { const x = list.find(it => it.cap >= T); return x ? x.name : null; }, pickSh = T => cSh.find(it => it.cap >= T) || null;
     const ord = girderOrder(), gName = gi => 'T' + (ord.findIndex(o => o.i === gi) + 1);
     const ref = geo.ref2;
+    // un solo tipo di grillo per tutto il sollevamento, scelto sul tiro massimo fra i golfari
+    const TdMax = Math.max(...pts.map((p, k) => f[k].T)) * fd * skl, shAll = pickSh(TdMax);
     const rows = pts.map((p, k) => {
       const ax = {x: p.x + ref[0], y: p.y + ref[1], z: p.z + ref[2]}, rl = rel(g, [ax.x, ax.y, ax.z]);
       const st = lm.stations[p.gi]; const near = st.length ? Math.min(...st.map(s => Math.abs(s.u - p.u))) : null;
       const Td = f[k].T * fd * skl;
-      const sh = pickSh(Td);
-      return {type: null, shackle: sh ? sh.name : null, shCap: sh ? sh.cap : 0, shPin: sh ? sh.pin : null, shJaw: sh ? sh.jaw : null, shObj: sh, Td, moved: LUG.custom[k] != null, k: k + 1, g: gName(p.gi), gi: p.gi, d: p.d, u: p.u, ...ax, rl, support: p.support, studs: p.studs, el: p.el, near, ...f[k]};
+      const sh = shAll;
+      return {type: null, shackle: sh ? sh.name : null, shCap: sh ? sh.cap : 0, shPin: sh ? sh.pin : null, shJaw: sh ? sh.jaw : null, shObj: sh, Td, moved: LUG.custom[k] != null, k: k + 1, g: gName(p.gi), gi: p.gi, d: p.d, u: p.u, ...ax, rl, support: p.support, studs: p.studs, el: p.el, near, ev: evH, ...f[k]};
     });
     // foro per il grillo maggiore: perno del grillo più grande scelto, foro = perno + gioco
     const big = rows.filter(x => x.shackle).sort((a, b) => b.shCap - a.shCap)[0];
@@ -1038,7 +1041,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
     if ((man || moved || rope) && rows.some(x => x.near > 0.15)) warn.push('<span class="warn">un golfare non è in asse a un diaframma o irrigidimento</span>');
     { const nf2 = rows.filter(x => pts[x.k - 1] && pts[x.k - 1].fexact === false); if (nf2.length) warn.push(`<span class="warn">piatto della piattabanda non isolato sotto ${nf2.map(x => 'G' + x.k).join(', ')} (giunto o estremità): controlla la sezione in tavola</span>`); }
     $('#lugSum').innerHTML = `${axial ? 'Distanza lungo l\'asse' : 'Distanza in pianta'} dal baricentro ${nf(LUG.res.R, 3)} m · scarto fra i golfari <b>${nf(LUG.res.dev * 1000, 0)} mm</b> · gancio a quota ${nf(hookZ + ref[2], 2)} m` + (warn.length ? '<br>' + warn.join(' · ') : ' · <span class="ok">✓ tutti i golfari appoggiano sulla piattabanda</span>');
-    $('#lugTab').innerHTML = '<tr><th>Golf.</th><th>Trave</th><th class="k">Carico t</th><th class="k">Tiro t</th><th class="k">Fune m</th><th class="k">Angolo °</th><th class="k">EC3</th><th>Asse m</th><th>Pianta m</th><th>Appoggio</th><th>Da asse</th><th>Grillo</th><th>Sposta</th></tr>' +
+    $('#lugTab').innerHTML = '<tr><th>Golf.</th><th>Trave</th><th class="k">Carico t</th><th class="k">Tiro t</th><th class="k" title="Dal centro del foro del golfare al gancio">Fune m</th><th class="k">Angolo °</th><th class="k">EC3</th><th>Asse m</th><th>Pianta m</th><th>Appoggio</th><th>Da asse</th><th>Grillo</th><th>Sposta</th></tr>' +
       rows.map(x => `<tr><td>G${x.k}</td><td>${x.g}</td><td class="k">${nf(x.P, 1)}</td><td class="k">${nf(x.T, 1)}</td><td class="k">${nf(x.Ls, 2)}</td><td class="k ${x.alpha < 45 ? 'warn' : ''}">${nf(x.alpha, 1)}</td><td class="${x.ec.max <= 1 ? 'okc' : 'koc'}" title="Rapporto massimo della verifica EN 1993-1-8">${nf(x.ec.max, 2)}</td><td>${nf(Math.abs(x.u), 3)}</td><td>${nf(x.d, 3)}</td><td class="${x.support >= 0.9 ? 'ok' : 'ko'}">${nf(x.support * 100, 0)}%${x.studs ? ' · ' + x.studs + ' p.' : ''}</td><td>${x.near == null ? '–' : nf(x.near * 1000, 0) + ' mm'}</td><td class="${x.shackle ? '' : 'ko'}" title="${esc(x.shackle || '')}">${esc(x.shackle ? x.shackle.replace(/^Grillo\s+/i, '').replace(/\s+[\d\-\/]+"/, '') : 'oltre catalogo')}</td><td><button class="sm" data-mv="${x.k - 1}" data-dir="-1" title="Asse più vicino al baricentro">‹</button><button class="sm" data-mv="${x.k - 1}" data-dir="1" title="Asse più lontano dal baricentro">›</button><button class="sm" data-pk="${x.k - 1}" title="Clicca un punto nel modello">⌖</button>${x.moved ? ' ✎' : ''}</td></tr>`).join('');
     renderEc(rows); fillEc();
     $('#lugTab').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => moveLug(+b.dataset.mv, +b.dataset.dir));
@@ -1228,7 +1231,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   $('#lugSave').onclick = async () => {
     if (!LUG || !LUG.res) return; setWcalc(); const {c, res} = LUG;
     c.lugs = {cogRef: c.cog.slice(), nRef: c.n, off: LUG.geo.off, model: LUG.geo.model, cog: LUG.geo.cog, ax: res.ax, custom: {...LUG.custom}, fd: res.fd, skl: res.skl, metric: $('#lugMetric').value, anchor: +$('#lugAnchor').value || 0, n: res.n, girders: res.gs, mode: res.mode, alt: LUG.alt || 0, R: res.R, dev: res.dev, H: res.H, W: res.W, lugL: res.lugL, lugWd: res.lugWd, hook: res.hook,
-      ec: {...(LUG.geoEff || store.lugGeo)}, points: res.rows.map(x => ({ecMax: x.ec ? x.ec.max : null, aH: x.aH, dir: x.dir, phi: x.phi, type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
+      ec: {...(LUG.geoEff || store.lugGeo)}, points: res.rows.map(x => ({ecMax: x.ec ? x.ec.max : null, aH: x.aH, dir: x.dir, phi: x.phi, type: x.type, shackle: x.shackle, x: x.x, y: x.y, z: x.z, ev: x.ev, d: x.d, g: x.g, support: x.support, near: x.near, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls}))};
     c.ed = Date.now(); save(); render(); await drawIcons();
     lugMsg(`<span class="ok">Golfari salvati in "${esc(c.name)}".</span>`);
   };
@@ -1247,7 +1250,8 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   function lugExportData() {
     const {c, g, geo, res} = LUG;
     return {name: c.name, weight: res.W, cog: geo.cog, ax: res.ax, hook: res.hook, lugL: res.lugL, fd: res.fd, skl: res.skl, group: g.name,
-      lugs: res.rows.map(x => ({x: x.x, y: x.y, z: x.z, g: x.g, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls, type: x.shackle, shackle: '', dir: x.dir}))};
+      lugGeo: LUG.geoEff || store.lugGeo,
+      lugs: res.rows.map(x => ({x: x.x, y: x.y, z: x.z, ev: x.ev, phi: x.phi || 0, g: x.g, P: x.P, T: x.T, alpha: x.alpha, Ls: x.Ls, type: x.shackle, shackle: '', dir: x.dir}))};
   }
   async function lugExport(kind, outline) {
     if (!LUG || !LUG.res) { lugMsg('Calcola prima i golfari.'); return; }

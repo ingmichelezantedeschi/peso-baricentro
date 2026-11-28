@@ -67,6 +67,21 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+GRILLO UNICO PER IL SOLLEVAMENTO (versione 52)
+- Tutti i golfari di un sollevamento hanno lo stesso grillo: il più piccolo della serie scelta con
+  portata ≥ tiro massimo fra i golfari × coefficiente dinamico × SKL. Lo stesso grillo compare in
+  tabella, nelle verifiche, nelle tavole e nel disegno d'officina (foro sul suo perno).
+
+FUNI DAL FORO DEL GOLFARE (versione 51)
+- Lunghezza, angolo e tiro delle funi sono calcolati dal centro del foro del golfare (eccentricità ev
+  sopra la piattabanda, dai dati della piastra in "Verifica golfare") fino al gancio, non più dalla
+  piattabanda. Il grillo non è compreso: la lunghezza va dal perno al gancio.
+- La quota del gancio resta misurata dalla piattabanda ("Gancio sopra golfari").
+- Nelle tavole di sollevamento le funi partono dal foro e il golfare in prospetto è disegnato con la
+  sua sagoma (piastra, tondo e foro); anche l'IFC delle funi parte dal foro.
+- I golfari salvati con la versione 50 mantengono le vecchie lunghezze finché non si riapre "Golfari"
+  e si salva di nuovo.
+
 ASSE DELLA PIATTABANDA (versione 50)
 - I golfari si posano sull'asse del solo piatto della piattabanda superiore: si prende il piatto sotto
   l'asse della trave e se ne misurano i bordi alla progressiva del golfare. Piatti accostati (fazzoletti
