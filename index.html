@@ -307,7 +307,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
 
 <script src="tcwapi.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="draw.js?v=52"></script>
+<script src="draw.js?v=53"></script>
 <script>
 (async function () {
   const $ = s => document.querySelector(s);
@@ -317,7 +317,7 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
   const kgt = W => W >= 1000 ? nf(W / 1000, 2) + ' t' : nf(W, 1) + ' kg';
   const setState = (t, busy) => { $('#state').innerHTML = (busy ? '<span class="spin"></span>' : '') + t; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-  const PB_VERSION = '52 (28/11/2026)';
+  const PB_VERSION = '53 (28/11/2026)';
   { const el = document.getElementById('pbVer'); if (el) el.textContent = 'Versione ' + PB_VERSION; }
   let tokenWaiter = null;
   let api, cur = null, runId = 0, timer = null, pickMode = null, hlCog = null, showIcons = true, store, SUP = null, GL = null;
@@ -1177,17 +1177,17 @@ table.lt td{padding:5px 6px;border-bottom:1px solid #eef0ef;font-family:var(--m)
       lugMsg('Preparazione del disegno di posizionamento…', true); await tick();
       let proj = {}; try { proj = await api.project.getProject(); } catch (e) {}
       const {c, geo, lm, res} = LUG, items = geo.items;
-      const lugs = res.rows.map(x => { const gd = lm.flangeAt ? lm.flangeAt(x.gi, x.u) : lm.girderAt(x.gi, x.u); return {n: x.k, x: x.x, y: x.y, z: x.z, gv: gd.v, gw: gd.w, exact: lm.flangeAt ? !!gd.exact : undefined, el: x.el, phi: x.phi || 0}; });
+      const lugs = res.rows.map(x => { const gd = lm.flangeAt ? lm.flangeAt(x.gi, x.u) : lm.girderAt(x.gi, x.u); return {n: x.k, g: x.g, x: x.x, y: x.y, z: x.z, gv: gd.v, gw: gd.w, exact: lm.flangeAt ? !!gd.exact : undefined, el: x.el, phi: x.phi || 0}; });
       const base = {ref: geo.ref2, ax: res.ax, cog: geo.cog, name: c.name, project: proj.name || '', geo: LUG.geoEff || store.lugGeo};
       const pages = [];
-      if ($('#layRef').value === 'macro') pages.push(PBDraw.buildLugLayout({...base, meshes: items.map(i => i.ms), lugs, refLabel: `macroconcio ${c.name}`}));
+      if ($('#layRef').value === 'macro') pages.push(PBDraw.buildLugLayout({...base, meshes: items.map(i => i.ms), lugs, refLabel: c.name}));
       else {
         const byPart = new Map();
         lugs.forEach(l => { const it = items.find(i => i.ms === l.el); const key = it ? it.part.g : 'nd'; if (!byPart.has(key)) byPart.set(key, {part: it && it.part, lugs: []}); byPart.get(key).lugs.push(l); });
         for (const {part, lugs: ls} of byPart.values()) {
           const ms = part ? items.filter(i => i.part === part).map(i => i.ms) : items.map(i => i.ms);
           const nm = part ? await markName(part) : c.name;
-          pages.push(PBDraw.buildLugLayout({...base, meshes: ms, lugs: ls, refLabel: part ? `marca ${nm}` : `macroconcio ${c.name}`})); // solo la marca
+          pages.push(PBDraw.buildLugLayout({...base, meshes: ms, lugs: ls, refLabel: part ? `marca ${nm}` : c.name})); // solo la marca
         }
       }
       const fn = safe(c.name) + '_posizionamento_golfari' + ($('#layRef').value === 'mark' ? '_marche' : '');

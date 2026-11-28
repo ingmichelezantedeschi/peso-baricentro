@@ -67,6 +67,21 @@ la aggiunge una volta in Impostazioni > Estensioni con l'indirizzo
 https://ingmichelezantedeschi.github.io/peso-baricentro/manifest.json
 Ogni progetto ha i suoi gruppi e baricentri (file PesoBaricentro/baricentri.json).
 
+TAVOLA DI POSIZIONAMENTO E CARTIGLI (versione 53)
+- Pianta: niente più RIF. 0. Ogni golfare è riferito allo spigolo esterno della piattabanda
+  superiore dal suo lato (cerchietto sullo spigolo). Quote per trave:
+    R = dallo spigolo al centro del golfare (quota vicina al disegno);
+    s = quota continua lungo la congiungente dei due spigoli esterni, da spigolo a spigolo
+        passando per i golfari (dà anche la distanza fra i golfari).
+  Gli spigoli sono cercati sul modello seguendo la piattabanda superiore fino alle estremità.
+- Testi delle quote sempre sopra la linea di quota; quote allontanate dal disegno se serve.
+- Etichette G1, G2… fuori dal disegno e dalle quote, con freccia verso il golfare.
+- Tolta la parola "macroconcio" dal riferimento.
+- Dettaglio in pianta: titolo alto come quello della sezione, angolo sotto il titolo dal lato
+  opposto all'arco, piattabanda chiusa da linee tratto-punto (vista interrotta).
+- Cartigli uguali in tutte le tavole: opera, committente, commessa, elaborato e revisione (riga
+  sotto la commessa), righe della tavola (es. gruppo), data, firme. Loghi più grandi del 20%.
+
 GRILLO UNICO PER IL SOLLEVAMENTO (versione 52)
 - Tutti i golfari di un sollevamento hanno lo stesso grillo: il più piccolo della serie scelta con
   portata ≥ tiro massimo fra i golfari × coefficiente dinamico × SKL. Lo stesso grillo compare in
